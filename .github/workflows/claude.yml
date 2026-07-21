@@ -88,6 +88,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+          # Temporary: surface SDK/MCP connection logs to debug the remote server.
+          show_full_output: true
+
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
@@ -96,4 +99,5 @@ jobs:
           claude_args: |
             --mcp-config ${{ runner.temp }}/mcp-config.json
             --allowed-tools "mcp__pallet-trade__get_deal,mcp__pallet-trade__get_deals"
+            --debug
 
