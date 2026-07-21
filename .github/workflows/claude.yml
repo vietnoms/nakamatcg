@@ -85,6 +85,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           PALLET_TRADE_TOKEN: ${{ secrets.PALLET_TRADE_TOKEN }}
+          # Wait for the remote MCP server to finish connecting before Claude
+          # starts, otherwise its tools are not yet registered in the session.
+          MCP_CONNECTION_NONBLOCKING: "0"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
