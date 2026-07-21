@@ -1,0 +1,51 @@
+{
+  "name": "pallet-sniper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first trading-card deal sniper: PalletTrade feed browser, Claude vision condition analysis, Discord alerts. Notify-only — never buys or bids.",
+  "type": "module",
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,magenta \"tsx watch server/index.ts\" \"vite\"",
+    "build": "tsc -p tsconfig.server.json && vite build",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p web/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "smoke:mcp": "tsx scripts/smoke-mcp.ts",
+    "smoke:ebay": "tsx scripts/smoke-ebay.ts",
+    "smoke:images": "tsx scripts/smoke-images.ts",
+    "smoke:analyze": "tsx scripts/smoke-analyze.ts",
+    "smoke:discord": "tsx scripts/smoke-discord.ts",
+    "smoke:e2e": "tsx scripts/smoke-e2e.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.4",
+    "@fastify/static": "^10.1.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@tanstack/react-query": "^5.101.3",
+    "better-sqlite3": "^13.0.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.10.0",
+    "p-queue": "^9.3.2",
+    "playwright": "^1.61.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^6.30.4",
+    "sharp": "^0.35.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

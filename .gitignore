@@ -1,0 +1,21 @@
+# dependencies / build output
+node_modules/
+dist/
+web/dist/
+
+# runtime data
+data/*.sqlite
+data/*.sqlite-*
+data/*.sqlite3
+tmp/
+
+# secrets
+.env
+.env.local
+
+# claude.yml generates an ephemeral .mcp.json at the repo root in CI — never commit one
+.mcp.json
+
+# misc
+*.log
+.DS_Store
