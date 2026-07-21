@@ -31,8 +31,13 @@ jobs:
           fetch-depth: 1
 
       - name: Create MCP config
+        env:
+          PALLET_TRADE_TOKEN: ${{ secrets.PALLET_TRADE_TOKEN }}
         run: |
-          cat > "${{ runner.temp }}/mcp-config.json" << 'EOF'
+          # Interpolate the token here in the shell (unquoted heredoc) so the
+          # config file contains the real value. The app does not reliably
+          # expand ${VAR} inside an --mcp-config file, so we must not defer it.
+          cat > "${{ runner.temp }}/mcp-config.json" << EOF
           {
             "mcpServers": {
               "pallet-trade": {
