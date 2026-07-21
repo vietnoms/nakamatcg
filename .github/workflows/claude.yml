@@ -63,25 +63,6 @@ jobs:
           }
           EOF
 
-      - name: Diagnose pallet.trade auth
-        env:
-          PALLET_TRADE_TOKEN: ${{ secrets.PALLET_TRADE_TOKEN }}
-        run: |
-          echo "token length: ${#PALLET_TRADE_TOKEN}"
-          case "$PALLET_TRADE_TOKEN" in
-            pt_mcp_*) echo "prefix check: OK (starts with pt_mcp_)";;
-            Bearer*)  echo "prefix check: BAD — secret value includes a 'Bearer ' prefix";;
-            "")       echo "prefix check: EMPTY — secret is not set";;
-            *)        echo "prefix check: UNEXPECTED prefix";;
-          esac
-          code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST https://pallet.trade/mcp \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json, text/event-stream" \
-            -H "Authorization: Bearer ${PALLET_TRADE_TOKEN}" \
-            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"diag","version":"1"}}}' \
-            --max-time 15)
-          echo "pallet.trade handshake HTTP status: $code (200 = token authenticates)"
-
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -93,9 +74,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Temporary: surface SDK/MCP connection logs to debug the remote server.
-          show_full_output: true
-
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
@@ -104,5 +82,6 @@ jobs:
           # (via enableAllProjectMcpServers); here we only permit its tools.
           claude_args: |
             --allowed-tools "mcp__pallet-trade__get_deal,mcp__pallet-trade__get_deals"
+
             --debug
 
