@@ -1,0 +1,66 @@
+[
+  {
+    "id": "pt_lst_v1|335559990001|0",
+    "marketplace": "ebay",
+    "url": "https://www.ebay.com/itm/335559990001?hash=item4e1c2f3a4b:g:qWkAAOSwAbc12def",
+    "seller": "cardshark_99",
+    "title": "Umbreon VMAX Alternate Art 215/203 Evolving Skies PSA 9 MINT",
+    "price_total": 385.5,
+    "currency": "USD",
+    "listed_at": "2026-07-20T14:02:11Z",
+    "ends_at": "2030-06-01T12:00:00Z",
+    "listing_type": "auction",
+    "match": {
+      "card": "Umbreon VMAX (Alternate Art)",
+      "set": "Evolving Skies",
+      "number": "215/203",
+      "variant": "Alt Art",
+      "grader": "PSA",
+      "grade": 9
+    },
+    "signal": {
+      "market_estimate": 610.0,
+      "percent_below_market": 37,
+      "deal_tier": "steal",
+      "verified": true,
+      "tier_basis": "sold_comps_30d",
+      "liquidity_score": 0.92,
+      "liquidity_rating": "high"
+    },
+    "current_bid": 385.5,
+    "bid_count": 12,
+    "source": "ebay"
+  },
+  {
+    "id": "pt_lst_v1|145220334455|0",
+    "marketplace": "ebay",
+    "url": "https://www.ebay.com/itm/145220334455?hash=item21d0aa11bb:g:zYxAAOSwQrs98uvw",
+    "seller": "binder_dumps",
+    "title": "Charizard Base Set Unlimited 4/102 Holo - LP see pics",
+    "price_total": 210.0,
+    "currency": "USD",
+    "listed_at": "2026-07-20T19:45:00Z",
+    "ends_at": null,
+    "listing_type": "fixed_price",
+    "match": {
+      "card": "Charizard",
+      "set": "Base Set (Unlimited)",
+      "number": "4/102",
+      "variant": "Holo",
+      "grader": null,
+      "grade": null
+    },
+    "signal": {
+      "market_estimate": 290.0,
+      "percent_below_market": 28,
+      "deal_tier": "great-deal",
+      "verified": false,
+      "tier_basis": "active_comps",
+      "liquidity_score": 0.85,
+      "liquidity_rating": "high"
+    },
+    "current_bid": null,
+    "bid_count": null,
+    "source": "ebay"
+  }
+]
