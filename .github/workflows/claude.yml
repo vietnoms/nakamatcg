@@ -44,10 +44,12 @@ jobs:
           TOKEN="${TOKEN%\'}"; TOKEN="${TOKEN#\'}"       # strip single quotes
           TOKEN="${TOKEN#Bearer }"                       # strip stray "Bearer "
 
-          # Interpolate the token here in the shell (unquoted heredoc) so the
-          # config file contains the real value. The app does not reliably
-          # expand ${VAR} inside an --mcp-config file, so we must not defer it.
-          cat > "${{ runner.temp }}/mcp-config.json" << EOF
+          # Write .mcp.json at the repo root. claude-code-action loads MCP
+          # servers from the project settings source (enableAllProjectMcpServers),
+          # NOT from --mcp-config passed via claude_args — so the file must live
+          # here. The token is baked in at build time (unquoted heredoc); the
+          # file is only in the ephemeral runner workspace, never committed.
+          cat > "${{ github.workspace }}/.mcp.json" << EOF
           {
             "mcpServers": {
               "pallet-trade": {
@@ -98,9 +100,9 @@ jobs:
           additional_permissions: |
             actions: read
 
-          # Give Claude access to the pallet.trade MCP server and permit its tools.
+          # The pallet.trade server is loaded from the repo-root .mcp.json
+          # (via enableAllProjectMcpServers); here we only permit its tools.
           claude_args: |
-            --mcp-config ${{ runner.temp }}/mcp-config.json
             --allowed-tools "mcp__pallet-trade__get_deal,mcp__pallet-trade__get_deals"
             --debug
 
