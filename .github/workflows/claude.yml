@@ -34,6 +34,16 @@ jobs:
         env:
           PALLET_TRADE_TOKEN: ${{ secrets.PALLET_TRADE_TOKEN }}
         run: |
+          # Sanitize the token: strip CR/LF, surrounding whitespace, stray
+          # surrounding quotes, and an accidental leading "Bearer " prefix.
+          # Guards against copy-paste slips when the secret was saved.
+          TOKEN="$(printf '%s' "$PALLET_TRADE_TOKEN" | tr -d '\r\n')"
+          TOKEN="${TOKEN#"${TOKEN%%[![:space:]]*}"}"   # ltrim
+          TOKEN="${TOKEN%"${TOKEN##*[![:space:]]}"}"   # rtrim
+          TOKEN="${TOKEN%\"}"; TOKEN="${TOKEN#\"}"       # strip double quotes
+          TOKEN="${TOKEN%\'}"; TOKEN="${TOKEN#\'}"       # strip single quotes
+          TOKEN="${TOKEN#Bearer }"                       # strip stray "Bearer "
+
           # Interpolate the token here in the shell (unquoted heredoc) so the
           # config file contains the real value. The app does not reliably
           # expand ${VAR} inside an --mcp-config file, so we must not defer it.
@@ -44,7 +54,7 @@ jobs:
                 "type": "http",
                 "url": "https://pallet.trade/mcp",
                 "headers": {
-                  "Authorization": "Bearer ${PALLET_TRADE_TOKEN}"
+                  "Authorization": "Bearer ${TOKEN}"
                 }
               }
             }
