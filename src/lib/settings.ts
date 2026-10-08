@@ -22,6 +22,10 @@ export const LabelSchema = z.object({
   offsetXDots: z.number().int().min(0).max(200),
   offsetYDots: z.number().int().min(0).max(200),
   speed: z.number().int().min(2).max(6),
+  // added later: stored settings without them take the defaults
+  layout: z.enum(["standard", "fold"]).default("standard"),
+  foldFrontIn: z.number().min(0.25).max(1.5).default(0.5),
+  foldGapIn: z.number().min(0).max(0.5).default(0.08),
 });
 
 export const PaymentMethodSchema = z.object({

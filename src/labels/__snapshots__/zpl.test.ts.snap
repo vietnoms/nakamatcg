@@ -1,5 +1,32 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`fold layout > matches the reviewed layout 1`] = `
+"^XA
+^MMT
+^MTD
+^PW305
+^LL203
+^LH0,0
+^PR3
+^MD0
+^FO0,68^A0N,39,39^FB102,1,0,C^FD$125^FS
+^FO0,113^A0N,22,22^FB102,1,0,C^FDPSA 10^FS
+^FO102,0^GB1,14,1^FS
+^FO102,189^GB1,14,1^FS
+^FO117,0^GB1,14,1^FS
+^FO117,189^GB1,14,1^FS
+^FO122,0^BQN,2,4^FDMM,AHTTPS://CARDS.EXAMPLE.COM/U/K7M2QX^FS
+^FO226,10^A0N,18,18^FDK7M2QX^FS
+^FO226,32^A0N,18,18^FD10/09^FS
+^FO226,54^A0N,22,22^FD$125^FS
+^FO122,114^A0N,20,20^FDUmbreon VMAX^FS
+^FO122,134^A0N,20,20^FD(Alternate Full.^FS
+^FO122,156^A0N,17,17^FDEvolving Skies^FS
+^FO122,173^A0N,17,17^FD215/203^FS
+^PQ1
+^XZ"
+`;
+
 exports[`labelZpl > matches the reviewed layout 1`] = `
 "^XA
 ^MMT

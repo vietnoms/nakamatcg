@@ -72,3 +72,11 @@ away: it opens a confirm step (the photo next to the catalog image, condition, a
 Trade each have a 60-100% of market slider, remembered on the phone; moving it re-prices the cart
 except amounts typed by hand. An offer under $1 keeps its cents instead of rounding down to $0, so a
 stack of cheap cards adds up; $1 and over still rounds down on the pricing steps.
+
+**Fold-over sticker layout.** Viet wanted less of the card covered: a second layout (Settings >
+Stickers > Layout) puts only the price and condition on a front strip (0.5 in by default); a blank
+band for the toploader's edge follows, then the back with the QR, code, date, price, name and set.
+The left part goes on the front at the toploader's right edge and the rest wraps around it, so the
+back reads upright when the toploader is turned over side to side. Both layouts are lists of fields
+that the ZPL and the on-screen preview draw from, so the preview matches the printout. The QR link is
+unchanged.

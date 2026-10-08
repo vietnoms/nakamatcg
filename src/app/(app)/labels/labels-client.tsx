@@ -224,7 +224,7 @@ export function LabelsClient({
             <p className="text-sm text-red-700 dark:text-red-300">{printerError ?? "Looking for the printer..."}</p>
           )}
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-            {settings.widthIn} x {settings.heightIn} in, {settings.dpi} dpi. Change in Settings.
+            {settings.widthIn} x {settings.heightIn} in, {settings.dpi} dpi, {settings.layout === "fold" ? "fold-over layout" : "standard layout"}. Change in Settings.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => void findPrinter()}>
