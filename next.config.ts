@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // keep CLAUDE.md ours: `next dev` otherwise appends a managed block when it detects an agent
   agentRules: false,
   poweredByHeader: false,
+  // a Collectr CSV of a few thousand rows is posted to the import action as text
+  experimental: { serverActions: { bodySizeLimit: "8mb" } },
   async headers() {
     return [
       {

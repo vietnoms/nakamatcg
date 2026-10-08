@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root {
+  /* light only: phones are read under bright show-floor lights */
+  color-scheme: light;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-900 antialiased;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
