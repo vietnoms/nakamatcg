@@ -218,3 +218,46 @@ export const loginAttempts = pgTable(
   },
   (t) => [index("login_attempts_ip_idx").on(t.ip, t.at)],
 );
+
+/**
+ * TCGplayer's catalog for Pokemon and One Piece, from tcgcsv.com (a daily mirror of TCGplayer's
+ * API), refreshed nightly. One row per product and printing (Normal, Holofoil, Reverse
+ * Holofoil, ...), each with its own market price. Used to price cards customers bring to the
+ * table; derived data, safe to drop and re-sync.
+ */
+export const catalogItems = pgTable(
+  "catalog_items",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    productId: integer("product_id").notNull(),
+    /** TCGplayer printing: Normal, Holofoil, Reverse Holofoil, 1st Edition Holofoil, ...; "" when unpriced */
+    subType: text("sub_type").notNull(),
+    /** pokemon | one_piece */
+    game: text("game").notNull(),
+    groupId: integer("group_id").notNull(),
+    setName: text("set_name").notNull(),
+    name: text("name").notNull(),
+    cleanName: text("clean_name").notNull(),
+    number: text("number").notNull().default(""),
+    /** normalizeNumber(number): the part before the slash, no leading zeros, for matching scans */
+    numberKey: text("number_key").notNull().default(""),
+    rarity: text("rarity").notNull().default(""),
+    imageUrl: text("image_url").notNull().default(""),
+    marketCents: integer("market_cents"),
+    lowCents: integer("low_cents"),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("catalog_items_product_subtype_uq").on(t.productId, t.subType),
+    index("catalog_items_number_idx").on(t.game, t.numberKey),
+    index("catalog_items_name_idx").on(t.game, t.cleanName),
+  ],
+);
+
+export const catalogSyncs = pgTable("catalog_syncs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  startedAt: ts("started_at").notNull().defaultNow(),
+  finishedAt: ts("finished_at"),
+  items: integer("items"),
+  error: text("error"),
+});
