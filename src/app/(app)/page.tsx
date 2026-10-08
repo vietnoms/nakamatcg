@@ -31,6 +31,10 @@ export default async function Home() {
           <li>
             Open <Link className="underline" href="/pos">POS</Link> on your phone, add it to the home screen, and wait for &ldquo;Offline ready&rdquo;.
           </li>
+          <li>
+            Make the show on <Link className="underline" href="/summary">Sales</Link> (New show) and print the{" "}
+            <Link className="underline" href="/inventory/print">paper backup list</Link>.
+          </li>
         </ol>
       </Card>
     </div>
