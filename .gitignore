@@ -25,6 +25,7 @@ coverage/
 .vitest/
 
 # tooling
+.devdb/
 .vercel
 .claude/settings.local.json
 .DS_Store

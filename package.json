@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "passcode:hash": "tsx scripts/passcode-hash.ts"
+    "passcode:hash": "tsx scripts/passcode-hash.ts",
+    "db:dev": "tsx scripts/dev-db.ts",
+    "dev:env": "tsx scripts/dev-env.ts"
   },
   "dependencies": {
     "barcode-detector": "3.2.2",
@@ -43,6 +45,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "0.31.10",
+    "embedded-postgres": "18.4.0-beta.17",
     "tailwindcss": "^4",
     "tsx": "^4",
     "typescript": "6.0.3",
