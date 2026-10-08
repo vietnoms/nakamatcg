@@ -123,7 +123,7 @@ export function LabelsClient({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Find in the queue: code, name, set"
-          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-zinc-900"
+          className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-100"
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={print} disabled={pending || !printer || labels.length === 0 || !baseUrl}>
@@ -135,13 +135,13 @@ export function LabelsClient({
           <Button variant="ghost" onClick={markSelectedPrinted} disabled={pending || chosen.length === 0}>
             Mark printed
           </Button>
-          {!pending && progress && <span className="text-sm text-green-700">{progress}</span>}
+          {!pending && progress && <span className="text-sm text-green-300">{progress}</span>}
         </div>
-        {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-md bg-red-950/40 p-3 text-sm text-red-300">{error}</p>}
 
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900">
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
+            <thead className="bg-zinc-950 text-left text-xs text-zinc-400">
               <tr>
                 <th className="w-8 p-2">
                   <input
@@ -170,7 +170,7 @@ export function LabelsClient({
                 <tr
                   key={q.unitId}
                   onClick={() => setPreviewId(q.unitId)}
-                  className={`cursor-pointer border-t border-zinc-100 ${previewItem?.unitId === q.unitId ? "bg-sky-50" : "hover:bg-zinc-50"}`}
+                  className={`cursor-pointer border-t border-zinc-800 ${previewItem?.unitId === q.unitId ? "bg-sky-950/40" : "hover:bg-zinc-800"}`}
                 >
                   <td className="p-2">
                     <input
@@ -188,7 +188,7 @@ export function LabelsClient({
                   </td>
                   <td className="p-2 font-mono text-xs">{q.code}</td>
                   <td className="p-2">
-                    {q.name} <span className="text-xs text-zinc-500">{[q.setName, q.cardNumber && `#${q.cardNumber}`].filter(Boolean).join(" ")}</span>
+                    {q.name} <span className="text-xs text-zinc-400">{[q.setName, q.cardNumber && `#${q.cardNumber}`].filter(Boolean).join(" ")}</span>
                   </td>
                   <td className="p-2 text-right tabular-nums">{formatCents(q.priceCents)}</td>
                   <td className="p-2">
@@ -204,7 +204,7 @@ export function LabelsClient({
               ))}
               {queue.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-zinc-500">
+                  <td colSpan={5} className="p-6 text-center text-zinc-400">
                     Every priced card has an up-to-date sticker.
                   </td>
                 </tr>
@@ -218,12 +218,12 @@ export function LabelsClient({
         <Card title="Printer">
           {printer ? (
             <p className="text-sm">
-              <Badge tone="green">ready</Badge> {printer.name} <span className="text-zinc-500">({printer.connection})</span>
+              <Badge tone="green">ready</Badge> {printer.name} <span className="text-zinc-400">({printer.connection})</span>
             </p>
           ) : (
-            <p className="text-sm text-red-700">{printerError ?? "Looking for the printer..."}</p>
+            <p className="text-sm text-red-300">{printerError ?? "Looking for the printer..."}</p>
           )}
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-zinc-400">
             {settings.widthIn} x {settings.heightIn} in, {settings.dpi} dpi. Change in Settings.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -252,12 +252,12 @@ export function LabelsClient({
         )}
 
         <Card title="Reprint by code">
-          <p className="mb-2 text-xs text-zinc-500">A sticker got damaged or lost? Type its code(s) to put them back in the queue.</p>
+          <p className="mb-2 text-xs text-zinc-400">A sticker got damaged or lost? Type its code(s) to put them back in the queue.</p>
           <textarea
             value={reprintText}
             onChange={(e) => setReprintText(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-zinc-300 p-2 font-mono text-sm"
+            className="w-full rounded-md border border-zinc-700 p-2 font-mono text-sm"
             placeholder="K7M2QX 9XW4HT"
           />
           <Button

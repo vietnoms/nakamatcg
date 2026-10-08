@@ -127,7 +127,7 @@ export function PosApp() {
 
   if (!settings) {
     return (
-      <main className="mx-auto max-w-md p-6 text-center text-sm text-zinc-600">
+      <main className="mx-auto max-w-md p-6 text-center text-sm text-zinc-400">
         {status.signedOut ? (
           <p>
             Signed out. <a className="underline" href="/login?next=/pos">Sign in</a> to download the inventory.
@@ -160,17 +160,17 @@ export function PosApp() {
     : !status.online
       ? { text: `Offline${status.pending ? ` · ${status.pending} to sync` : ""}`, cls: "bg-amber-500 text-white" }
       : status.pending
-        ? { text: `${status.pending} to sync`, cls: "bg-amber-100 text-amber-800" }
-        : { text: "Synced", cls: "bg-green-100 text-green-800" };
+        ? { text: `${status.pending} to sync`, cls: "bg-amber-900/50 text-amber-200" }
+        : { text: "Synced", cls: "bg-green-900/50 text-green-200" };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-900/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="flex items-center gap-2 py-2">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{event?.name ?? "No show selected"}</div>
-            <div className="text-xs text-zinc-500" title="Offline ready: this phone has the app and the inventory saved, so it keeps working with no signal.">
-              {status.offlineReady ? "Offline ready" : <span className="text-amber-700">Not offline-ready yet (open it once with signal)</span>}
+            <div className="text-xs text-zinc-400" title="Offline ready: this phone has the app and the inventory saved, so it keeps working with no signal.">
+              {status.offlineReady ? "Offline ready" : <span className="text-amber-300">Not offline-ready yet (open it once with signal)</span>}
             </div>
           </div>
           {status.signedOut ? (
@@ -194,7 +194,7 @@ export function PosApp() {
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={clsx("border-b-2 py-2 capitalize", tab === t ? "border-zinc-900 font-semibold" : "border-transparent text-zinc-500")}
+              className={clsx("border-b-2 py-2 capitalize", tab === t ? "border-zinc-100 font-semibold" : "border-transparent text-zinc-400")}
             >
               {t}
             </button>
@@ -203,7 +203,7 @@ export function PosApp() {
       </header>
 
       {installHint && (
-        <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="flex items-start gap-2 border-b border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-100">
           <span className="flex-1">
             <b>Add this to your home screen</b> so it opens with no signal and keeps its data:{" "}
             {installHint === "ios" ? "tap Share, then “Add to Home Screen”. Then open it from the new icon." : "open the browser menu, then “Install app” or “Add to Home screen”."}
@@ -252,11 +252,11 @@ export function PosApp() {
       </main>
 
       {toast && (
-        <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+92px)] z-30 mx-auto flex max-w-md items-center gap-3 rounded-lg bg-zinc-900 px-4 py-3 text-sm text-white shadow-lg">
+        <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+92px)] z-30 mx-auto flex max-w-md items-center gap-3 rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-950 shadow-lg">
           <span className="flex-1">{toast.text}</span>
           <button
             type="button"
-            className="font-semibold text-amber-300"
+            className="font-semibold text-amber-700"
             onClick={() => {
               void recordVoid(toast.dealId, device).then(() => {
                 setToast(null);

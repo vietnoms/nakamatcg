@@ -60,3 +60,13 @@ form still works by hand offline.
 
 **Not built yet (after the show):** re-sticker warnings page (`/restick`) comparing sticker prices
 with fresh suggestions; automatic price refresh (tcgcsv.com for raw cards); sales tax.
+
+**Dark theme.** Viet asked for the whole site in dark mode, replacing the earlier light-only call.
+Classes were remapped once (zinc scale flipped, white surfaces to zinc-900, colored tints to dark
+tints with light text); there is no light mode or toggle. Printouts stay black on white.
+
+**Confirm, then batch, cards coming in.** A photo or catalog pick no longer fills the form straight
+away: it opens a confirm step (the photo next to the catalog image, condition, amounts) whose
+**Add to cart** puts the card in the deal's cart as its own line, ready for the next card. Buy and
+Trade each have a 60-100% of market slider, remembered on the phone; moving it re-prices the cart
+except amounts typed by hand.

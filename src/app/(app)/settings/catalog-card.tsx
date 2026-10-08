@@ -36,7 +36,7 @@ export function CatalogCard({
   return (
     <Card title="Price catalog and card photos">
       <div className="space-y-3 text-sm">
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           When you buy or trade for a card, the POS can photograph it and fill in the card and its price. Raw prices are
           TCGplayer market prices for Pok&eacute;mon and One Piece (the same source Collectr uses for raw cards), refreshed every
           night. Slab prices come from recent sales on CardSight.
@@ -44,16 +44,16 @@ export function CatalogCard({
         <div className="flex flex-wrap items-center gap-2">
           <span>Catalog:</span>
           {items > 0 ? <Badge tone="green">{items.toLocaleString()} prices</Badge> : <Badge tone="amber">empty</Badge>}
-          <span className="text-xs text-zinc-500">{lastOk ? `updated ${lastOk}` : "never refreshed"}</span>
+          <span className="text-xs text-zinc-400">{lastOk ? `updated ${lastOk}` : "never refreshed"}</span>
         </div>
-        {lastError && <p className="text-xs text-red-700">Last refresh failed: {lastError}</p>}
+        {lastError && <p className="text-xs text-red-300">Last refresh failed: {lastError}</p>}
         <div className="flex flex-wrap items-center gap-2">
           <span>Photo services:</span>
           <Badge tone={cardsight ? "green" : "zinc"}>CardSight {cardsight ? "on" : "off"}</Badge>
           <Badge tone={claude ? "green" : "zinc"}>Claude fallback {claude ? "on" : "off"}</Badge>
         </div>
         {(!cardsight || !claude) && (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             A service is switched on by adding its key on the server (CARDSIGHT_API_KEY, ANTHROPIC_API_KEY) and redeploying.
           </p>
         )}
@@ -61,7 +61,7 @@ export function CatalogCard({
           <Button variant="secondary" disabled={busy} onClick={() => void refresh()}>
             {busy ? "Refreshing..." : "Refresh prices now"}
           </Button>
-          {msg && <span className="text-xs text-zinc-600">{msg}</span>}
+          {msg && <span className="text-xs text-zinc-400">{msg}</span>}
         </div>
       </div>
     </Card>

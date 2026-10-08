@@ -40,7 +40,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Sales</h1>
-          <p className="text-sm text-zinc-500">{event ? `${event.name}, ${event.startsOn} to ${event.endsOn}` : "Deals recorded without a show"}</p>
+          <p className="text-sm text-zinc-400">{event ? `${event.name}, ${event.startsOn} to ${event.endsOn}` : "Deals recorded without a show"}</p>
         </div>
         <EventControls events={events.map((e) => ({ id: e.id, name: e.name, startsOn: e.startsOn, startingCashCents: e.startingCashCents }))} activeId={settings.activeEventId} currentId={eventId} />
       </div>
@@ -56,15 +56,15 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
       </Explainer>
 
       <div className="flex flex-wrap gap-2 text-sm">
-        <Link href={q({})} className={`rounded-full border px-3 py-1 ${!day ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300"}`}>
+        <Link href={q({})} className={`rounded-full border px-3 py-1 ${!day ? "border-zinc-100 bg-zinc-100 text-zinc-950" : "border-zinc-700"}`}>
           Whole show
         </Link>
         {days.map((d) => (
-          <Link key={d} href={q({ day: d })} className={`rounded-full border px-3 py-1 ${day === d ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300"}`}>
+          <Link key={d} href={q({ day: d })} className={`rounded-full border px-3 py-1 ${day === d ? "border-zinc-100 bg-zinc-100 text-zinc-950" : "border-zinc-700"}`}>
             {d}
           </Link>
         ))}
-        <a href={`/api/export/sold?event=${eventId ?? "none"}${day ? `&day=${day}` : ""}`} className="ml-auto rounded-full border border-zinc-300 px-3 py-1">
+        <a href={`/api/export/sold?event=${eventId ?? "none"}${day ? `&day=${day}` : ""}`} className="ml-auto rounded-full border border-zinc-700 px-3 py-1">
           Export sold cards (CSV)
         </a>
       </div>
@@ -83,7 +83,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="By payment method">
           <table className="w-full text-sm">
-            <thead className="text-left text-xs text-zinc-500">
+            <thead className="text-left text-xs text-zinc-400">
               <tr>
                 <th className="py-1">Method</th>
                 <th className="py-1 text-right">In</th>
@@ -93,7 +93,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
             </thead>
             <tbody>
               {s.byMethod.map((m) => (
-                <tr key={m.method} className="border-t border-zinc-100">
+                <tr key={m.method} className="border-t border-zinc-800">
                   <td className="py-1.5">{m.label}</td>
                   <td className="py-1.5 text-right tabular-nums">{formatCents(m.inCents)}</td>
                   <td className="py-1.5 text-right tabular-nums">{formatCents(m.outCents)}</td>
@@ -102,7 +102,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
               ))}
               {s.byMethod.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-3 text-center text-zinc-500">
+                  <td colSpan={4} className="py-3 text-center text-zinc-400">
                     No payments yet.
                   </td>
                 </tr>
@@ -113,7 +113,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
         {s.cashBoxCents !== null && event && (
           <Card title="Cash box">
             <p className="text-3xl font-semibold tabular-nums">{formatCents(s.cashBoxCents)}</p>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-zinc-400">
               should be in the box: {formatCents(event.startingCashCents)} starting float, plus cash taken, minus cash paid out. Count it and compare.
             </p>
           </Card>
@@ -121,7 +121,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
       </div>
 
       <Card title={`Deals (${s.deals.length})`}>
-        <ul className="divide-y divide-zinc-100">
+        <ul className="divide-y divide-zinc-800">
           {s.deals.map((d) => {
             const net = d.payments.reduce((n, p) => n + (p.direction === "in" ? p.amountCents : -p.amountCents), 0);
             return (
@@ -129,25 +129,25 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
                 <div className="flex items-center gap-2">
                   <Badge tone={d.kind === "sale" ? "green" : d.kind === "buy" ? "blue" : "amber"}>{KIND[d.kind] ?? d.kind}</Badge>
                   {d.voided && <Badge tone="red">voided</Badge>}
-                  <span className="text-zinc-500">{time.format(d.occurredAt)}</span>
+                  <span className="text-zinc-400">{time.format(d.occurredAt)}</span>
                   <span className="ml-auto tabular-nums">
                     {d.payments.map((p) => `${settings.paymentMethods.find((m) => m.id === p.method)?.label ?? p.method} ${p.direction === "out" ? "-" : ""}${formatCents(p.amountCents)}`).join(" + ") || "no money"}
                   </span>
-                  <span className={`w-24 text-right font-medium tabular-nums ${net >= 0 ? "text-green-700" : "text-red-700"}`}>{formatCents(net)}</span>
+                  <span className={`w-24 text-right font-medium tabular-nums ${net >= 0 ? "text-green-300" : "text-red-300"}`}>{formatCents(net)}</span>
                 </div>
-                <ul className="mt-1 pl-2 text-xs text-zinc-600">
+                <ul className="mt-1 pl-2 text-xs text-zinc-400">
                   {d.lines.map((l, i) => (
                     <li key={i}>
-                      {l.direction === "out" ? "out" : "in"}: {l.name} {l.detail && <span className="text-zinc-400">{l.detail}</span>}{" "}
-                      {l.code && <span className="font-mono text-zinc-400">{l.code}</span>} {formatCents(l.amountCents)}
-                      {l.direction === "out" && l.stickerCents !== null && l.stickerCents !== l.amountCents && <span className="text-zinc-400"> (sticker {formatCents(l.stickerCents)})</span>}
+                      {l.direction === "out" ? "out" : "in"}: {l.name} {l.detail && <span className="text-zinc-500">{l.detail}</span>}{" "}
+                      {l.code && <span className="font-mono text-zinc-500">{l.code}</span>} {formatCents(l.amountCents)}
+                      {l.direction === "out" && l.stickerCents !== null && l.stickerCents !== l.amountCents && <span className="text-zinc-500"> (sticker {formatCents(l.stickerCents)})</span>}
                     </li>
                   ))}
                 </ul>
               </li>
             );
           })}
-          {s.deals.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">No deals yet.</li>}
+          {s.deals.length === 0 && <li className="py-6 text-center text-sm text-zinc-400">No deals yet.</li>}
         </ul>
       </Card>
     </div>
