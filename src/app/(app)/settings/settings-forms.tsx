@@ -38,6 +38,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card title="Suggested prices">
         <div className="space-y-3 text-sm">
+          <p className="text-xs text-zinc-500">What the Pricing page fills in when you press Enter on an empty box. Each price range rounds to its step: with "up", $12.10 becomes $13. You can always type your own price.</p>
           <label className="flex items-center gap-2">
             <Input
               type="number"
@@ -109,6 +110,10 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Stickers">
         <div className="grid grid-cols-2 gap-3 text-sm">
+          <p className="col-span-2 text-xs text-zinc-500">
+            Match the roll in the printer. DPI is on the sticker under the Zebra (203 for most desktop models). Faint print: raise
+            darkness. Text cut off on one side: shift it the other way.
+          </p>
           <label className="col-span-2 flex items-center gap-2">
             Size
             <Select
@@ -166,6 +171,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Payment methods">
         <div className="space-y-2 text-sm">
+          <p className="text-xs text-zinc-500">The buttons on the POS, in this order (the last one you used is preselected on each phone). The fee is only used to work out profit on the Sales page; nothing here moves money.</p>
           {methods.map((m, i) => (
             <div key={m.id} className="flex items-center gap-2">
               <Input
@@ -210,6 +216,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Trades and re-stickering">
         <div className="space-y-3 text-sm">
+          <p className="text-xs text-zinc-500">Trade-in value is the starting credit for a customer's card on the POS Trade tab (you can change it per card). It also becomes that card's cost for gain and loss.</p>
           <label className="flex items-center gap-2">
             Trade-in value
             <Input type="number" value={tradeIn} onChange={(e) => setTradeIn(Number(e.target.value))} className="w-20 text-right" />% of market

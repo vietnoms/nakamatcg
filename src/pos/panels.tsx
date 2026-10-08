@@ -9,6 +9,8 @@ import { CartEntry, CartList, useCart } from "./cart";
 import { IncomingForm, IncomingList, MoneyInput, PaymentBox, expandIncoming, money, type IncomingItem } from "./parts";
 import { lastDeals, recordDeal, recordVoid, retryErrors } from "./sync";
 import { posDb } from "./db";
+import { usePersistentState } from "./persist";
+import { Explainer } from "@/components/explainer";
 
 export type Ctx = {
   settings: LocalSettings;
@@ -53,13 +55,17 @@ const weightOf = (u: { priceCents: number | null; marketCents: number | null }) 
 
 /* ---------------------------------------------------------------- sell */
 
+function Hint({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-4 text-sm text-zinc-600">{children}</div>;
+}
+
 export function SellPanel({ ctx }: { ctx: Ctx }) {
-  const cart = useCart();
-  const [misc, setMisc] = useState<{ key: string; description: string; amountCents: number }[]>([]);
+  const cart = useCart("nk:cart:sell");
+  const [misc, setMisc] = usePersistentState<{ key: string; description: string; amountCents: number }[]>("nk:cart:sell-misc", []);
   const [miscOpen, setMiscOpen] = useState(false);
   const [miscDesc, setMiscDesc] = useState("Bulk");
   const [miscAmount, setMiscAmount] = useState<number | null>(null);
-  const [total, setTotal] = useState<number | null>(null);
+  const [total, setTotal] = usePersistentState<number | null>("nk:cart:sell-total", null);
   const [pays, setPays] = useState<{ method: string; amountCents: number }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -88,7 +94,7 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
     setTotal(Math.floor(agreed / step) * step);
   }
 
-  async function confirm() {
+  async function confirmSale() {
     if (!pays) return;
     setBusy(true);
     setError(null);
@@ -183,14 +189,52 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
               Back to sticker total
             </button>
           )}
-          <PaymentBox methods={ctx.settings.paymentMethods} totalCents={agreed} onChange={setPays} label="Paid with" />
+          <PaymentBox methods={ctx.settings.paymentMethods} totalCents={agreed} onChange={setPays} label="Paid with" rememberKey="nk:pay:sell" />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <ConfirmButton disabled={busy || !pays || agreed <= 0} onClick={() => void confirm()}>
-            Confirm sale {money(agreed)}
-          </ConfirmButton>
-          <button type="button" className="w-full py-1 text-sm text-zinc-500" onClick={() => { cart.clear(); setMisc([]); setTotal(null); }}>
+          <button
+            type="button"
+            className="w-full py-1 text-sm text-zinc-500"
+            onClick={() => {
+              if (!confirm("Empty the cart?")) return;
+              cart.clear();
+              setMisc([]);
+              setTotal(null);
+            }}
+          >
             Clear cart
           </button>
+        </div>
+      )}
+
+      {count === 0 && (
+        <Hint>
+          <p className="font-medium text-zinc-800">Scan a sticker to start a sale</p>
+          <p className="mt-1">
+            Hold the QR code on the toploader in the frame: it beeps and the card drops into the cart. Keep scanning to bundle
+            cards. Then check the total and tap <b>Confirm</b> at the bottom. No QR? Type the 6-letter code or search the name.
+          </p>
+        </Hint>
+      )}
+
+      {count > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 bg-white/95 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+10px)] backdrop-blur">
+          <div className="mx-auto flex max-w-md items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-lg font-semibold tabular-nums">{money(agreed)}</div>
+              <div className="truncate text-xs text-zinc-500">
+                {count} item{count === 1 ? "" : "s"} ·{" "}
+                {pays && pays.length ? pays.map((p) => ctx.settings.paymentMethods.find((m) => m.id === p.method)?.label ?? p.method).join(" + ") : "pick how they paid"}
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={busy || !pays || agreed <= 0}
+              onClick={() => void confirmSale()}
+              className="rounded-lg bg-green-600 px-5 py-3 text-base font-semibold text-white active:bg-green-700 disabled:bg-zinc-300"
+            >
+              Confirm sale {money(agreed)}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -208,7 +252,7 @@ function useOfferPercent(initial: number) {
 }
 
 export function BuyPanel({ ctx }: { ctx: Ctx }) {
-  const [items, setItems] = useState<IncomingItem[]>([]);
+  const [items, setItems] = usePersistentState<IncomingItem[]>("nk:cart:buy", []);
   const [offer, setOffer] = useOfferPercent(70);
   const [pays, setPays] = useState<{ method: string; amountCents: number }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +290,16 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
         />
         % of market
       </label>
+      {items.length === 0 && (
+        <Hint>
+          <p className="font-medium text-zinc-800">Buying cards from a customer</p>
+          <p className="mt-1">
+            Type the name: picking a card you already carry fills in set, number and market price. <b>Pay each</b> starts at your
+            cash offer % of market; <b>Sticker each</b> at your pricing rule (or leave it for later). Add every card, then pay and
+            confirm. They go into stock with what you paid as their cost, and their stickers wait on the laptop&apos;s Stickers page.
+          </p>
+        </Hint>
+      )}
       <IncomingForm offerPercent={offer} rule={ctx.settings.pricing} onAdd={(it) => setItems([...items, it])} verb="Pay" />
       <IncomingList items={items} onRemove={(k) => setItems(items.filter((i) => i.key !== k))} verb="paid" />
       {items.length > 0 && (
@@ -256,7 +310,7 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
             </span>
             <span className="font-semibold tabular-nums">{money(total)}</span>
           </div>
-          <PaymentBox methods={ctx.settings.paymentMethods} totalCents={total} onChange={setPays} label="I paid with" />
+          <PaymentBox methods={ctx.settings.paymentMethods} totalCents={total} onChange={setPays} label="I paid with" rememberKey="nk:pay:buy" />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <ConfirmButton disabled={busy || !pays} onClick={() => void confirm()}>
             Confirm buy {money(total)}
@@ -270,9 +324,9 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
 /* ---------------------------------------------------------------- trade */
 
 export function TradePanel({ ctx }: { ctx: Ctx }) {
-  const cart = useCart();
-  const [outTotal, setOutTotal] = useState<number | null>(null);
-  const [items, setItems] = useState<IncomingItem[]>([]);
+  const cart = useCart("nk:cart:trade");
+  const [outTotal, setOutTotal] = usePersistentState<number | null>("nk:cart:trade-total", null);
+  const [items, setItems] = usePersistentState<IncomingItem[]>("nk:cart:trade-in", []);
   const [pays, setPays] = useState<{ method: string; amountCents: number }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -304,6 +358,15 @@ export function TradePanel({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="space-y-4">
+      {cart.lines.length === 0 && items.length === 0 && (
+        <Hint>
+          <p className="font-medium text-zinc-800">Trading with a customer</p>
+          <p className="mt-1">
+            Scan your cards going out (their value starts at the sticker prices; change it if you agree on another), then add
+            their cards coming in at {ctx.settings.tradeInPercent}% of market. The difference shows who pays whom and how much.
+          </p>
+        </Hint>
+      )}
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">My cards going out</h3>
         <CartEntry cart={cart} scanning={ctx.scanning} setScanning={ctx.setScanning} />
@@ -337,7 +400,7 @@ export function TradePanel({ ctx }: { ctx: Ctx }) {
             </div>
           </div>
           {diff !== 0 && (
-            <PaymentBox methods={ctx.settings.paymentMethods} totalCents={Math.abs(diff)} onChange={setPays} label={diff > 0 ? "They paid with" : "I paid with"} />
+            <PaymentBox methods={ctx.settings.paymentMethods} totalCents={Math.abs(diff)} onChange={setPays} label={diff > 0 ? "They paid with" : "I paid with"} rememberKey="nk:pay:trade" />
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <ConfirmButton disabled={busy || (diff !== 0 && !pays)} onClick={() => void confirm()}>
@@ -379,6 +442,16 @@ export function HistoryPanel({
 
   return (
     <div className="space-y-4">
+      <Explainer id="pos" title="How the POS works">
+        <ul>
+          <li><b>Sell</b>: scan stickers into the cart, adjust the total if you make a deal, pick how they paid, Confirm. A bundle&apos;s price is split across the cards by sticker price.</li>
+          <li><b>Buy</b> and <b>Trade</b>: cards coming in become stock with their cost; their stickers print later on the laptop.</li>
+          <li><b>No signal is fine.</b> Everything is saved on this phone first and sent when there is signal: the pill at the top shows how many deals are waiting. Keep the app open from the home-screen icon.</li>
+          <li><b>Mistakes</b>: tap Undo on the message after a deal, or Void it below. Its cards go back into stock.</li>
+          <li><b>Carts are saved</b>: closing the app, reloading, or scanning a sticker with the camera app keeps the same cart.</li>
+          <li>Pick the <b>show</b> below so the sales land in the right place.</li>
+        </ul>
+      </Explainer>
       <div className="rounded-lg border border-zinc-200 bg-white p-3 text-sm">
         <label className="flex items-center gap-2">
           Show

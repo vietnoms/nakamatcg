@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge, Card, Stat } from "@/components/ui";
+import { Explainer } from "@/components/explainer";
 import { getDb } from "@/db/client";
 import { formatCents } from "@/lib/money";
 import { getSettings } from "@/server/settings";
@@ -43,6 +44,16 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
         </div>
         <EventControls events={events.map((e) => ({ id: e.id, name: e.name, startsOn: e.startsOn, startingCashCents: e.startingCashCents }))} activeId={settings.activeEventId} currentId={eventId} />
       </div>
+
+      <Explainer id="sales" title="What these numbers mean">
+        <ul>
+          <li><b>Sales</b>: what cards and bulk sold for (in a trade, the value of your cards that went out). <b>Gross profit</b> = sales minus what those cards cost you minus card fees (set in Settings). Cards with no cost are listed, not guessed.</li>
+          <li><b>Bought</b> and <b>Traded in</b>: what you paid or credited for cards that came in; they are now stock with that cost.</li>
+          <li><b>Cash box</b>: your starting cash plus cash taken minus cash paid out. Count the box at the end of the day and compare; a difference means a sale was missed or entered with the wrong method.</li>
+          <li>A <b>voided</b> deal stays listed (greyed) but counts for nothing; its cards went back into stock. Void from the phone&apos;s History tab or with Undo right after a sale.</li>
+          <li>Each phone files deals under the <b>active show</b>. Make a show the active one before the show starts so its phones pick it up.</li>
+        </ul>
+      </Explainer>
 
       <div className="flex flex-wrap gap-2 text-sm">
         <Link href={q({})} className={`rounded-full border px-3 py-1 ${!day ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300"}`}>

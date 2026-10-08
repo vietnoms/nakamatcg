@@ -41,6 +41,7 @@ export function warmScanner(): void {
 export function Scanner({ onScan, active }: { onScan: (text: string) => void; active: boolean }) {
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [torch, setTorch] = useState<{ on: boolean; track: MediaStreamTrack } | null>(null);
   const last = useRef<{ text: string; at: number }>({ text: "", at: 0 });
   const handler = useRef(onScan);
   handler.current = onScan;
@@ -60,6 +61,10 @@ export function Scanner({ onScan, active }: { onScan: (text: string) => void; ac
         if (stopped || !video.current) return;
         video.current.srcObject = stream;
         await video.current.play();
+        // a flashlight button where the phone allows it (Android Chrome; iPhones do not expose it)
+        const track = stream.getVideoTracks()[0];
+        const caps = (track?.getCapabilities?.() ?? {}) as { torch?: boolean };
+        if (track && caps.torch) setTorch({ on: false, track });
         const detector = await makeDetector();
         setError(null);
         const tick = async () => {
@@ -92,13 +97,34 @@ export function Scanner({ onScan, active }: { onScan: (text: string) => void; ac
       stopped = true;
       if (timer) clearTimeout(timer);
       stream?.getTracks().forEach((t) => t.stop());
+      setTorch(null);
     };
   }, [active]);
 
+  async function toggleTorch() {
+    if (!torch) return;
+    try {
+      await torch.track.applyConstraints({ advanced: [{ torch: !torch.on } as MediaTrackConstraintSet] });
+      setTorch({ ...torch, on: !torch.on });
+    } catch {
+      setTorch(null);
+    }
+  }
+
   return (
     <div className="relative overflow-hidden rounded-lg bg-black">
-      <video ref={video} playsInline muted className="aspect-[4/3] w-full object-cover" />
-      <div className="pointer-events-none absolute inset-8 rounded-lg border-2 border-white/60" />
+      <video ref={video} playsInline muted className="aspect-[16/10] w-full object-cover" />
+      <div className="pointer-events-none absolute inset-x-[22%] inset-y-6 rounded-lg border-2 border-white/70" />
+      <p className="pointer-events-none absolute inset-x-0 top-1.5 text-center text-xs font-medium text-white/80">Hold a sticker&apos;s QR code in the box</p>
+      {torch && (
+        <button
+          type="button"
+          onClick={() => void toggleTorch()}
+          className={`absolute right-2 bottom-2 rounded-full px-3 py-1.5 text-xs font-semibold ${torch.on ? "bg-amber-300 text-zinc-900" : "bg-black/60 text-white"}`}
+        >
+          {torch.on ? "Light on" : "Light"}
+        </button>
+      )}
       {error && <p className="absolute inset-x-0 bottom-0 bg-red-600/90 p-2 text-center text-sm text-white">{error}</p>}
     </div>
   );

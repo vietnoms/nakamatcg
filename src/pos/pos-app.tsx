@@ -42,6 +42,19 @@ export function PosApp() {
   const [toast, setToast] = useState<{ text: string; dealId: string } | null>(null);
   const [status, setStatus] = useState<Status>({ online: true, signedOut: false, pending: 0, errors: 0, lastPull: null, offlineReady: false, busy: false });
   const syncing = useRef(false);
+  const [installHint, setInstallHint] = useState<"ios" | "android" | null>(null);
+
+  useEffect(() => {
+    // outside the home-screen app, offline use and saved storage are not dependable: say how to install it
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem("nk:install-hint") === "dismissed";
+    } catch {
+      dismissed = false;
+    }
+    if (!standalone && !dismissed) setInstallHint(/iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "android");
+  }, []);
 
   const loadLocal = useCallback(async () => {
     const s = await getMeta<LocalSettings>("settings");
@@ -156,8 +169,8 @@ export function PosApp() {
         <div className="flex items-center gap-2 py-2">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{event?.name ?? "No show selected"}</div>
-            <div className="text-xs text-zinc-500">
-              {status.offlineReady ? "Offline ready" : <span className="text-amber-700">Not offline-ready yet</span>}
+            <div className="text-xs text-zinc-500" title="Offline ready: this phone has the app and the inventory saved, so it keeps working with no signal.">
+              {status.offlineReady ? "Offline ready" : <span className="text-amber-700">Not offline-ready yet (open it once with signal)</span>}
             </div>
           </div>
           {status.signedOut ? (
@@ -189,7 +202,30 @@ export function PosApp() {
         </nav>
       </header>
 
-      <main className="flex-1 p-3 pb-24">
+      {installHint && (
+        <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="flex-1">
+            <b>Add this to your home screen</b> so it opens with no signal and keeps its data:{" "}
+            {installHint === "ios" ? "tap Share, then “Add to Home Screen”. Then open it from the new icon." : "open the browser menu, then “Install app” or “Add to Home screen”."}
+          </span>
+          <button
+            type="button"
+            className="font-semibold"
+            onClick={() => {
+              setInstallHint(null);
+              try {
+                localStorage.setItem("nk:install-hint", "dismissed");
+              } catch {
+                // fine
+              }
+            }}
+          >
+            OK
+          </button>
+        </div>
+      )}
+
+      <main className="flex-1 p-3 pb-28">
         {/* panels stay mounted so a half-built cart survives a tab switch */}
         <div hidden={tab !== "sell"}>
           <SellPanel ctx={{ ...ctx, scanning: scanning && tab === "sell" }} />
@@ -216,7 +252,7 @@ export function PosApp() {
       </main>
 
       {toast && (
-        <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-30 mx-auto flex max-w-md items-center gap-3 rounded-lg bg-zinc-900 px-4 py-3 text-sm text-white shadow-lg">
+        <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+92px)] z-30 mx-auto flex max-w-md items-center gap-3 rounded-lg bg-zinc-900 px-4 py-3 text-sm text-white shadow-lg">
           <span className="flex-1">{toast.text}</span>
           <button
             type="button"

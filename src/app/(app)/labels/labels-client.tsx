@@ -50,6 +50,12 @@ export function LabelsClient({
   }, []);
 
   const chosen = useMemo(() => queue.filter((q) => selected.has(q.unitId)), [queue, selected]);
+  const [search, setSearch] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const shown = useMemo(() => {
+    const n = search.trim().toLowerCase();
+    return n ? queue.filter((x) => `${x.code} ${x.name} ${x.setName} ${x.cardNumber}`.toLowerCase().includes(n)) : queue;
+  }, [queue, search]);
   const labels = useMemo(() => chosen.map((q) => ({ unitId: q.unitId, data: labelDataFor(q, pricedOn) })), [chosen, pricedOn]);
 
   function print() {
@@ -106,12 +112,19 @@ export function LabelsClient({
     }
   }
 
-  const allOn = selected.size === queue.length && queue.length > 0;
-  const first = labels[0]?.data;
+  const allOn = shown.length > 0 && shown.every((x) => selected.has(x.unitId));
+  const previewItem = queue.find((x) => x.unitId === previewId) ?? chosen[0];
+  const first = previewItem ? labelDataFor(previewItem, pricedOn) : undefined;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
       <div className="space-y-3">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Find in the queue: code, name, set"
+          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-zinc-900"
+        />
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={print} disabled={pending || !printer || labels.length === 0 || !baseUrl}>
             {pending && progress ? progress : `Print ${labels.length} sticker${labels.length === 1 ? "" : "s"}`}
@@ -134,7 +147,16 @@ export function LabelsClient({
                   <input
                     type="checkbox"
                     checked={allOn}
-                    onChange={() => setSelected(allOn ? new Set() : new Set(queue.map((q) => q.unitId)))}
+                    onChange={() =>
+                      setSelected((s) => {
+                        const n = new Set(s);
+                        for (const x of shown) {
+                          if (allOn) n.delete(x.unitId);
+                          else n.add(x.unitId);
+                        }
+                        return n;
+                      })
+                    }
                   />
                 </th>
                 <th className="p-2">Code</th>
@@ -144,8 +166,12 @@ export function LabelsClient({
               </tr>
             </thead>
             <tbody>
-              {queue.map((q) => (
-                <tr key={q.unitId} className="border-t border-zinc-100">
+              {shown.map((q) => (
+                <tr
+                  key={q.unitId}
+                  onClick={() => setPreviewId(q.unitId)}
+                  className={`cursor-pointer border-t border-zinc-100 ${previewItem?.unitId === q.unitId ? "bg-sky-50" : "hover:bg-zinc-50"}`}
+                >
                   <td className="p-2">
                     <input
                       type="checkbox"
@@ -220,7 +246,7 @@ export function LabelsClient({
         </Card>
 
         {first && baseUrl && (
-          <Card title="Preview (first selected)">
+          <Card title="Preview (click a row to see its sticker)">
             <LabelPreview data={first} settings={settings} baseUrl={baseUrl} />
           </Card>
         )}
