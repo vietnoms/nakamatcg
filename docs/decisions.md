@@ -80,3 +80,14 @@ The left part goes on the front at the toploader's right edge and the rest wraps
 back reads upright when the toploader is turned over side to side. Both layouts are lists of fields
 that the ZPL and the on-screen preview draw from, so the preview matches the printout. The QR link is
 unchanged.
+
+**Groups and consignment.** Viet wanted cards organized into groups named after Collectr
+portfolios, and to sell other people's cards on consignment. `unit_groups` holds the groups; each
+unit has an optional `group_id`. An own import makes one group per portfolio and fills in groups for
+copies imported before groups existed (oldest copy first). A consignor's CSV is imported into their
+consignment group with no cost, and is compared only with that group's earlier imports, so their
+copies never block or duplicate mine (my imports likewise ignore consigned units). Consigned units
+are left out of gain and loss. My fee is a percentage (basis points) of each card's share of its
+deal, with an optional minimum per card, capped at the sale; voided deals are left out. The group
+page reports it by day range in `APP_TZ` and downloads a statement CSV. There is no payout ledger
+yet: settle up by date range.

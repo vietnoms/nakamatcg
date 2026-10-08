@@ -59,6 +59,27 @@ export const imports = pgTable("imports", {
   appliedAt: ts("applied_at").notNull().defaultNow(),
 });
 
+/**
+ * A named group of cards: one of my Collectr portfolios, or a consignor's cards I sell for them.
+ * Imports name groups after Collectr portfolios; cards can be moved between groups.
+ */
+export const unitGroups = pgTable(
+  "unit_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** own | consignment */
+    kind: text("kind").notNull().default("own"),
+    /** consignment: my fee in basis points of each sale (1500 = 15%) */
+    feeBps: integer("fee_bps"),
+    /** consignment: the least I take per card sold, in cents */
+    minFeeCents: integer("min_fee_cents"),
+    note: text("note").notNull().default(""),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("unit_groups_name_uq").on(t.name)],
+);
+
 export const units = pgTable(
   "units",
   {
@@ -73,6 +94,8 @@ export const units = pgTable(
     /** import | buy | trade_in | manual */
     source: text("source").notNull(),
     importId: uuid("import_id").references(() => imports.id),
+    /** null: no group; a consignment group's cards are not mine (no cost, left out of gains) */
+    groupId: uuid("group_id").references(() => unitGroups.id),
     /** in_stock | sold | traded_out | removed */
     status: text("status").notNull().default("in_stock"),
     /** the price the card should carry now */
@@ -93,6 +116,7 @@ export const units = pgTable(
     index("units_product_idx").on(t.productId),
     index("units_status_idx").on(t.status),
     index("units_updated_idx").on(t.updatedAt),
+    index("units_group_idx").on(t.groupId),
   ],
 );
 

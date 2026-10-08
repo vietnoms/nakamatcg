@@ -1,7 +1,12 @@
 import { Explainer } from "@/components/explainer";
+import { getDb } from "@/db/client";
+import { listGroups } from "@/server/groups";
 import { ImportClient } from "./import-client";
 
-export default function ImportPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ImportPage() {
+  const consignors = (await listGroups(getDb())).flatMap((g) => (g.id && g.kind === "consignment" ? [{ id: g.id, name: g.name, feeBps: g.feeBps ?? 0 }] : []));
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Import from Collectr</h1>
@@ -21,8 +26,13 @@ export default function ImportPage() {
           <b>Importing again later is safe.</b> It updates market prices (that is how stale stickers get spotted) and only adds
           copies that are new. Cards you sold here are never added back, even if they are still in Collectr.
         </p>
+        <p>
+          <b>Groups</b>: each portfolio becomes a group of the same name (see the Groups page). <b>Consigning for someone?</b> Choose
+          &ldquo;A consignor&apos;s cards&rdquo; and drop their Collectr CSV: their cards go in their own group with your fee, kept
+          apart from yours.
+        </p>
       </Explainer>
-      <ImportClient />
+      <ImportClient consignors={consignors} />
     </div>
   );
 }
