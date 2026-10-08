@@ -45,7 +45,7 @@ function ConfirmButton({ disabled, onClick, children }: { disabled: boolean; onC
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="w-full rounded-lg bg-green-600 py-4 text-lg font-semibold text-white active:bg-green-700 disabled:bg-zinc-700"
+      className="w-full rounded-lg bg-green-600 py-4 text-lg font-semibold text-white active:bg-green-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
     >
       {children}
     </button>
@@ -57,7 +57,7 @@ const weightOf = (u: { priceCents: number | null; marketCents: number | null }) 
 /* ---------------------------------------------------------------- sell */
 
 function Hint({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-900 p-4 text-sm text-zinc-400">{children}</div>;
+  return <div className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 text-sm text-zinc-500 dark:text-zinc-400">{children}</div>;
 }
 
 export function SellPanel({ ctx }: { ctx: Ctx }) {
@@ -125,13 +125,13 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
       <CartEntry cart={cart} scanning={ctx.scanning} setScanning={ctx.setScanning} />
       <CartList cart={cart} />
       {misc.length > 0 && (
-        <ul className="rounded-lg border border-zinc-800 bg-zinc-900 px-3">
+        <ul className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3">
           {misc.map((m) => (
-            <li key={m.key} className="flex items-center justify-between border-b border-zinc-800 py-2 text-sm last:border-0">
+            <li key={m.key} className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 py-2 text-sm last:border-0">
               <span>{m.description}</span>
               <span className="flex items-center tabular-nums">
                 {money(m.amountCents)}
-                <button type="button" className="px-2 text-xl leading-none text-zinc-500" onClick={() => setMisc(misc.filter((x) => x.key !== m.key))}>
+                <button type="button" className="px-2 text-xl leading-none text-zinc-400 dark:text-zinc-500" onClick={() => setMisc(misc.filter((x) => x.key !== m.key))}>
                   ×
                 </button>
               </span>
@@ -141,12 +141,12 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
       )}
       {miscOpen ? (
         <div className="flex items-center gap-2">
-          <input className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-2" value={miscDesc} onChange={(e) => setMiscDesc(e.target.value)} />
+          <input className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-2" value={miscDesc} onChange={(e) => setMiscDesc(e.target.value)} />
           <MoneyInput cents={miscAmount} onChange={setMiscAmount} className="w-28" autoFocus />
           <button
             type="button"
             disabled={!miscDesc.trim() || !miscAmount}
-            className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-950 disabled:bg-zinc-700"
+            className="rounded-md bg-zinc-900 dark:bg-zinc-100 px-3 py-2 text-sm text-white dark:text-zinc-950 disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
             onClick={() => {
               setMisc([...misc, { key: crypto.randomUUID(), description: miscDesc.trim(), amountCents: miscAmount! }]);
               setMiscAmount(null);
@@ -157,44 +157,44 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
           </button>
         </div>
       ) : (
-        <button type="button" className="text-sm text-zinc-400 underline" onClick={() => setMiscOpen(true)}>
+        <button type="button" className="text-sm text-zinc-500 dark:text-zinc-400 underline" onClick={() => setMiscOpen(true)}>
           + Item without a sticker (bulk, bins)
         </button>
       )}
 
       {count > 0 && (
-        <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+        <div className="space-y-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-400">
+            <span className="text-zinc-500 dark:text-zinc-400">
               {count} item{count === 1 ? "" : "s"} at sticker
             </span>
             <span className="tabular-nums">{money(subtotal)}</span>
           </div>
-          {unpriced > 0 && <p className="text-xs text-amber-300">{unpriced} card(s) have no price; they count at market. Type the agreed total.</p>}
+          {unpriced > 0 && <p className="text-xs text-amber-700 dark:text-amber-300">{unpriced} card(s) have no price; they count at market. Type the agreed total.</p>}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Total</span>
             <MoneyInput cents={agreed} onChange={(c) => setTotal(c ?? 0)} className="flex-1" />
           </div>
           <div className="grid grid-cols-4 gap-1.5 text-sm">
             {[5, 10, 15].map((p) => (
-              <button key={p} type="button" onClick={() => discount(p)} className="rounded border border-zinc-700 py-1.5">
+              <button key={p} type="button" onClick={() => discount(p)} className="rounded border border-zinc-300 dark:border-zinc-700 py-1.5">
                 -{p}%
               </button>
             ))}
-            <button type="button" onClick={roundDown} className="rounded border border-zinc-700 py-1.5">
+            <button type="button" onClick={roundDown} className="rounded border border-zinc-300 dark:border-zinc-700 py-1.5">
               Round down
             </button>
           </div>
           {total !== null && total !== subtotal && (
-            <button type="button" className="text-xs text-zinc-400 underline" onClick={() => setTotal(null)}>
+            <button type="button" className="text-xs text-zinc-500 dark:text-zinc-400 underline" onClick={() => setTotal(null)}>
               Back to sticker total
             </button>
           )}
           <PaymentBox methods={ctx.settings.paymentMethods} totalCents={agreed} onChange={setPays} label="Paid with" rememberKey="nk:pay:sell" />
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <button
             type="button"
-            className="w-full py-1 text-sm text-zinc-400"
+            className="w-full py-1 text-sm text-zinc-500 dark:text-zinc-400"
             onClick={() => {
               if (!confirm("Empty the cart?")) return;
               cart.clear();
@@ -209,7 +209,7 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
 
       {count === 0 && (
         <Hint>
-          <p className="font-medium text-zinc-200">Scan a sticker to start a sale</p>
+          <p className="font-medium text-zinc-800 dark:text-zinc-200">Scan a sticker to start a sale</p>
           <p className="mt-1">
             Hold the QR code on the toploader in the frame: it beeps and the card drops into the cart. Keep scanning to bundle
             cards. Then check the total and tap <b>Confirm</b> at the bottom. No QR? Type the 6-letter code or search the name.
@@ -218,11 +218,11 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
       )}
 
       {count > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-800 bg-zinc-900/95 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+10px)] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+10px)] backdrop-blur">
           <div className="mx-auto flex max-w-md items-center gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-lg font-semibold tabular-nums">{money(agreed)}</div>
-              <div className="truncate text-xs text-zinc-400">
+              <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                 {count} item{count === 1 ? "" : "s"} ·{" "}
                 {pays && pays.length ? pays.map((p) => ctx.settings.paymentMethods.find((m) => m.id === p.method)?.label ?? p.method).join(" + ") : "pick how they paid"}
               </div>
@@ -231,7 +231,7 @@ export function SellPanel({ ctx }: { ctx: Ctx }) {
               type="button"
               disabled={busy || !pays || agreed <= 0}
               onClick={() => void confirmSale()}
-              className="rounded-lg bg-green-600 px-5 py-3 text-base font-semibold text-white active:bg-green-700 disabled:bg-zinc-700"
+              className="rounded-lg bg-green-600 px-5 py-3 text-base font-semibold text-white active:bg-green-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
             >
               Confirm sale {money(agreed)}
             </button>
@@ -298,7 +298,7 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
       <PercentPicker label="Cash offer" value={offer} onChange={setOffer} />
       {items.length === 0 && (
         <Hint>
-          <p className="font-medium text-zinc-200">Buying cards from a customer</p>
+          <p className="font-medium text-zinc-800 dark:text-zinc-200">Buying cards from a customer</p>
           <p className="mt-1">
             Take a photo or search a card, check it&apos;s the right one, then <b>Add to cart</b>. Repeat for the whole stack: each
             card is its own line in one cart. <b>Pay each</b> is your cash offer % of market (move the slider and the cart
@@ -310,7 +310,7 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
       <IncomingForm offerPercent={offer} rule={ctx.settings.pricing} onAdd={(it) => setItems((xs) => [...xs, it])} verb="Pay" />
       <IncomingList items={items} onRemove={(k) => setItems((xs) => xs.filter((i) => i.key !== k))} verb="paid" />
       {items.length > 0 && (
-        <div id="buy-checkout" className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+        <div id="buy-checkout" className="space-y-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
           <div className="flex justify-between text-sm">
             <span>
               {cards} card{cards === 1 ? "" : "s"}
@@ -318,13 +318,13 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
             <span className="font-semibold tabular-nums">{money(total)}</span>
           </div>
           <PaymentBox methods={ctx.settings.paymentMethods} totalCents={total} onChange={setPays} label="I paid with" rememberKey="nk:pay:buy" />
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <ConfirmButton disabled={busy || !pays} onClick={() => void confirm()}>
             Confirm buy {money(total)}
           </ConfirmButton>
           <button
             type="button"
-            className="w-full py-1 text-sm text-zinc-400"
+            className="w-full py-1 text-sm text-zinc-500 dark:text-zinc-400"
             onClick={() => {
               if (window.confirm("Empty the cart?")) setItems([]);
             }}
@@ -335,11 +335,11 @@ export function BuyPanel({ ctx }: { ctx: Ctx }) {
       )}
 
       {items.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-800 bg-zinc-900/95 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+10px)] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+10px)] backdrop-blur">
           <div className="mx-auto flex max-w-md items-center gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-lg font-semibold tabular-nums">{money(total)}</div>
-              <div className="truncate text-xs text-zinc-400">
+              <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                 {cards} card{cards === 1 ? "" : "s"} in the cart · {offer}% offer
               </div>
             </div>
@@ -402,7 +402,7 @@ export function TradePanel({ ctx }: { ctx: Ctx }) {
     <div className="space-y-4">
       {cart.lines.length === 0 && items.length === 0 && (
         <Hint>
-          <p className="font-medium text-zinc-200">Trading with a customer</p>
+          <p className="font-medium text-zinc-800 dark:text-zinc-200">Trading with a customer</p>
           <p className="mt-1">
             Scan your cards going out (their value starts at the sticker prices; change it if you agree on another), then add
             their cards coming in (photo or search, check, Add to cart) at your trade credit % of market. The difference shows who pays whom and how much.
@@ -427,25 +427,25 @@ export function TradePanel({ ctx }: { ctx: Ctx }) {
         <IncomingList items={items} onRemove={(k) => setItems((xs) => xs.filter((i) => i.key !== k))} verb="credit" />
       </section>
       {cart.lines.length > 0 && items.length > 0 && (
-        <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+        <div className="space-y-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
           <div className="grid grid-cols-3 text-center text-sm">
             <div>
-              <div className="text-xs text-zinc-400">Out</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">Out</div>
               <div className="tabular-nums">{money(outValue)}</div>
             </div>
             <div>
-              <div className="text-xs text-zinc-400">In</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">In</div>
               <div className="tabular-nums">{money(inValue)}</div>
             </div>
             <div>
-              <div className="text-xs text-zinc-400">{diff > 0 ? "They pay" : diff < 0 ? "You pay" : "Even"}</div>
-              <div className={clsx("font-semibold tabular-nums", diff > 0 ? "text-green-300" : diff < 0 ? "text-red-300" : "")}>{money(Math.abs(diff))}</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">{diff > 0 ? "They pay" : diff < 0 ? "You pay" : "Even"}</div>
+              <div className={clsx("font-semibold tabular-nums", diff > 0 ? "text-green-700 dark:text-green-300" : diff < 0 ? "text-red-700 dark:text-red-300" : "")}>{money(Math.abs(diff))}</div>
             </div>
           </div>
           {diff !== 0 && (
             <PaymentBox methods={ctx.settings.paymentMethods} totalCents={Math.abs(diff)} onChange={setPays} label={diff > 0 ? "They paid with" : "I paid with"} rememberKey="nk:pay:trade" />
           )}
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <ConfirmButton disabled={busy || (diff !== 0 && !pays)} onClick={() => void confirm()}>
             Confirm trade
           </ConfirmButton>
@@ -495,10 +495,10 @@ export function HistoryPanel({
           <li>Pick the <b>show</b> below so the sales land in the right place.</li>
         </ul>
       </Explainer>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm">
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 text-sm">
         <label className="flex items-center gap-2">
           Show
-          <select className="min-w-0 flex-1 rounded border border-zinc-700 px-2 py-1.5" value={ctx.eventId ?? ""} onChange={(e) => onEvent(e.target.value || null)}>
+          <select className="min-w-0 flex-1 rounded border border-zinc-300 dark:border-zinc-700 px-2 py-1.5" value={ctx.eventId ?? ""} onChange={(e) => onEvent(e.target.value || null)}>
             <option value="">(no show)</option>
             {ctx.settings.events.map((e) => (
               <option key={e.id} value={e.id}>
@@ -507,21 +507,21 @@ export function HistoryPanel({
             ))}
           </select>
         </label>
-        <p className="mt-2 text-xs text-zinc-400">{units} cards in stock on this phone · device {ctx.device}</p>
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{units} cards in stock on this phone · device {ctx.device}</p>
         <div className="mt-2 flex gap-2">
-          <button type="button" className="rounded-md border border-zinc-700 px-3 py-1.5" onClick={onSync}>
+          <button type="button" className="rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-1.5" onClick={onSync}>
             Sync now
           </button>
-          <button type="button" className="rounded-md border border-zinc-700 px-3 py-1.5" onClick={onFullSync}>
+          <button type="button" className="rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-1.5" onClick={onFullSync}>
             Re-download inventory
           </button>
         </div>
       </div>
 
       {errors.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm">
-          <p className="font-medium text-red-200">{errors.length} deal(s) the server refused. They are kept on this phone.</p>
-          <ul className="list-disc pl-5 text-red-300">
+        <div className="space-y-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 text-sm">
+          <p className="font-medium text-red-800 dark:text-red-200">{errors.length} deal(s) the server refused. They are kept on this phone.</p>
+          <ul className="list-disc pl-5 text-red-700 dark:text-red-300">
             {errors.map((e) => (
               <li key={e.id}>{e.error}</li>
             ))}
@@ -532,29 +532,29 @@ export function HistoryPanel({
         </div>
       )}
 
-      <ul className="rounded-lg border border-zinc-800 bg-zinc-900 px-3">
-        {deals.length === 0 && <li className="py-6 text-center text-sm text-zinc-400">No deals on this phone yet.</li>}
+      <ul className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3">
+        {deals.length === 0 && <li className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">No deals on this phone yet.</li>}
         {deals.map((d) => (
-          <li key={d.id} className={clsx("flex items-center gap-2 border-b border-zinc-800 py-2 text-sm last:border-0", d.voidedBy && "opacity-50")}>
+          <li key={d.id} className={clsx("flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 py-2 text-sm last:border-0", d.voidedBy && "opacity-50")}>
             <div className="min-w-0 flex-1">
               <div className={clsx("truncate", d.voidedBy && "line-through")}>
-                <span className="mr-1 rounded bg-zinc-900 px-1 text-xs">{label(d.kind)}</span>
+                <span className="mr-1 rounded bg-zinc-100 dark:bg-zinc-800 px-1 text-xs">{label(d.kind)}</span>
                 {d.summary}
               </div>
-              <div className="text-xs text-zinc-400">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">
                 {new Date(d.occurredAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} ·{" "}
-                {d.synced ? "synced" : <span className="text-amber-300">waiting to sync</span>}
-                {d.conflicts?.length ? <span className="text-red-300"> · {d.conflicts.join("; ")}</span> : null}
+                {d.synced ? "synced" : <span className="text-amber-700 dark:text-amber-300">waiting to sync</span>}
+                {d.conflicts?.length ? <span className="text-red-700 dark:text-red-300"> · {d.conflicts.join("; ")}</span> : null}
               </div>
             </div>
-            <span className={clsx("tabular-nums", d.netCents >= 0 ? "text-green-300" : "text-red-300")}>
+            <span className={clsx("tabular-nums", d.netCents >= 0 ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300")}>
               {d.netCents >= 0 ? "+" : "-"}
               {money(Math.abs(d.netCents))}
             </span>
             {!d.voidedBy && (
               <button
                 type="button"
-                className="rounded border border-zinc-700 px-2 py-1 text-xs"
+                className="rounded border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs"
                 onClick={() => {
                   if (confirm(`Void "${d.summary}"? Cards go back in stock.`)) void recordVoid(d.id, ctx.device).then(() => { setTick((x) => x + 1); onSync(); });
                 }}

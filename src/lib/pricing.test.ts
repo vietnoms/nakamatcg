@@ -92,8 +92,12 @@ describe("offers for cards coming in", () => {
     expect(offerPrice(4000, 100, DEFAULT_PRICING)).toBe(4000);
   });
 
-  it("can offer nothing for a card worth less than a step", () => {
-    expect(offerPrice(80, 70, DEFAULT_PRICING)).toBe(0);
+  it("keeps the cents under $1 instead of rounding to nothing", () => {
+    expect(offerPrice(80, 70, DEFAULT_PRICING)).toBe(56);
+    expect(offerPrice(125, 70, DEFAULT_PRICING)).toBe(88);
+    expect(offerPrice(142, 70, DEFAULT_PRICING)).toBe(99);
+    expect(offerPrice(143, 70, DEFAULT_PRICING)).toBe(100);
+    expect(offerPrice(199, 60, DEFAULT_PRICING)).toBe(100);
   });
 
   it("keeps the slider between 60 and 100 percent", () => {

@@ -5,7 +5,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-4">
       <h1 className="mb-1 text-2xl font-semibold">Nakama Cards</h1>
-      <p className="mb-6 text-sm text-zinc-400">Inventory, stickers, and show sales.</p>
+      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">Inventory, stickers, and show sales.</p>
       <LoginForm next={next ?? "/"} />
     </main>
   );

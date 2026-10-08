@@ -173,16 +173,16 @@ export function CartEntry({ cart, scanning, setScanning }: { cart: Cart; scannin
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Sticker code or card name"
-          className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+          className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2"
           autoCapitalize="characters"
         />
-        <button className="rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm">Find</button>
-        <button type="button" onClick={() => setScanning(!scanning)} className="rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm">
+        <button className="rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm">Find</button>
+        <button type="button" onClick={() => setScanning(!scanning)} className="rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm">
           {scanning ? "Hide cam" : "Camera"}
         </button>
       </form>
       {results.length > 0 && (
-        <ul className="rounded-lg border border-zinc-800 bg-zinc-900 px-3">
+        <ul className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3">
           {results.map((u) => (
             <li key={u.id} className="flex items-center">
               <div className="flex-1">
@@ -190,7 +190,7 @@ export function CartEntry({ cart, scanning, setScanning }: { cart: Cart; scannin
               </div>
               <button
                 type="button"
-                className="ml-2 rounded-md bg-zinc-100 px-3 py-1.5 text-sm text-zinc-950"
+                className="ml-2 rounded-md bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm text-white dark:text-zinc-950"
                 onClick={() => {
                   cart.addUnit(u);
                   setResults([]);
@@ -210,13 +210,13 @@ export function CartEntry({ cart, scanning, setScanning }: { cart: Cart; scannin
 export function CartList({ cart }: { cart: Cart }) {
   if (cart.lines.length === 0) return null;
   return (
-    <ul className="rounded-lg border border-zinc-800 bg-zinc-900 px-3">
+    <ul className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3">
       {cart.lines.map((u) => (
         <UnitRow
           key={u.id}
           u={u}
           onRemove={() => cart.remove(u.id)}
-          right={<span className="text-sm tabular-nums">{u.priceCents === null ? <span className="text-amber-400">no price</span> : money(u.priceCents)}</span>}
+          right={<span className="text-sm tabular-nums">{u.priceCents === null ? <span className="text-amber-600 dark:text-amber-400">no price</span> : money(u.priceCents)}</span>}
         />
       ))}
     </ul>

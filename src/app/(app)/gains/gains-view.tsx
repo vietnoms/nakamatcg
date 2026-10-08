@@ -11,7 +11,7 @@ type Dir = "asc" | "desc";
 
 const money = (c: number | null) => (c === null ? "-" : formatCents(c));
 const pct = (p: number | null) => (p === null ? "-" : `${p > 0 ? "+" : ""}${p.toFixed(1)}%`);
-const tone = (c: number | null) => (c === null || c === 0 ? "" : c > 0 ? "text-green-300" : "text-red-300");
+const tone = (c: number | null) => (c === null || c === 0 ? "" : c > 0 ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300");
 const signed = (c: number | null) => (c === null ? "-" : `${c > 0 ? "+" : ""}${formatCents(c)}`);
 
 function useSort<K extends string>(initial: K, dir: Dir = "desc") {
@@ -39,7 +39,7 @@ function Th<K extends string>({ k, sort, children, right }: { k: K; sort: { key:
   const on = sort.key === k;
   return (
     <th className={clsx("p-2", right && "text-right")}>
-      <button type="button" onClick={() => sort.toggle(k)} className={clsx("inline-flex items-center gap-1 hover:text-zinc-100", on && "text-zinc-100")}>
+      <button type="button" onClick={() => sort.toggle(k)} className={clsx("inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100", on && "text-zinc-900 dark:text-zinc-100")}>
         {children}
         <span className="w-3 text-[10px]">{on ? (sort.dir === "desc" ? "▼" : "▲") : ""}</span>
       </button>
@@ -107,14 +107,14 @@ export function GainsView({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-md border border-zinc-700 bg-zinc-900 p-0.5 text-sm">
+        <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-0.5 text-sm">
           {(
             [
               ["stock", "In stock (unrealized)"],
               ["sold", "Sold (realized)"],
             ] as const
           ).map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setTab(k)} className={clsx("rounded px-3 py-1.5", tab === k ? "bg-zinc-100 text-zinc-950" : "text-zinc-300")}>
+            <button key={k} type="button" onClick={() => setTab(k)} className={clsx("rounded px-3 py-1.5", tab === k ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950" : "text-zinc-700 dark:text-zinc-300")}>
               {label}
             </button>
           ))}
@@ -141,7 +141,7 @@ export function GainsView({
             ))}
           </Select>
         )}
-        <a href={exportHref} className="ml-auto rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm hover:bg-zinc-800">
+        <a href={exportHref} className="ml-auto rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
           Export CSV
         </a>
       </div>
@@ -158,9 +158,9 @@ export function GainsView({
               hint={uTot.cost > 0 ? pct(Math.round((uTot.gain * 10000) / uTot.cost) / 100) : undefined}
             />
           </div>
-          <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900">
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
             <table className="w-full text-sm">
-              <thead className="bg-zinc-950 text-left text-xs text-zinc-400">
+              <thead className="bg-zinc-50 dark:bg-zinc-950 text-left text-xs text-zinc-500 dark:text-zinc-400">
                 <tr>
                   <Th k="name" sort={uSort}>
                     Card
@@ -187,12 +187,12 @@ export function GainsView({
               </thead>
               <tbody>
                 {uRows.map((r) => (
-                  <tr key={`${r.productId}-${r.costCents}`} className="border-t border-zinc-800">
+                  <tr key={`${r.productId}-${r.costCents}`} className="border-t border-zinc-200 dark:border-zinc-800">
                     <td className="p-2">
                       <div className="font-medium">
                         {r.name} {r.badge && <Badge tone={r.kind === "slab" ? "blue" : "zinc"}>{r.badge}</Badge>}
                       </div>
-                      <div className="text-xs text-zinc-400">{[r.setName, r.cardNumber && `#${r.cardNumber}`, r.variant].filter(Boolean).join(" · ")}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">{[r.setName, r.cardNumber && `#${r.cardNumber}`, r.variant].filter(Boolean).join(" · ")}</div>
                     </td>
                     <td className="p-2 text-right tabular-nums">{r.qty}</td>
                     <td className="p-2 text-right tabular-nums">{money(r.costCents)}</td>
@@ -204,7 +204,7 @@ export function GainsView({
                 ))}
                 {uRows.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center text-zinc-400">
+                    <td colSpan={7} className="p-6 text-center text-zinc-500 dark:text-zinc-400">
                       {unrealized.length === 0 ? "No in-stock cards with both a cost and a market price yet." : "Nothing matches this filter."}
                     </td>
                   </tr>
@@ -221,9 +221,9 @@ export function GainsView({
             <Stat label="Cost" value={formatCents(rTot.cost)} />
             <Stat label="Realized gain" value={<span className={tone(rTot.gain)}>{signed(rTot.gain)}</span>} hint={rTot.unknown ? "cards with no cost left out" : undefined} />
           </div>
-          <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900">
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
             <table className="w-full text-sm">
-              <thead className="bg-zinc-950 text-left text-xs text-zinc-400">
+              <thead className="bg-zinc-50 dark:bg-zinc-950 text-left text-xs text-zinc-500 dark:text-zinc-400">
                 <tr>
                   <Th k="soldOn" sort={rSort}>
                     Date
@@ -247,16 +247,16 @@ export function GainsView({
               </thead>
               <tbody>
                 {rRows.map((r) => (
-                  <tr key={`${r.transactionId}-${r.code}`} className="border-t border-zinc-800">
-                    <td className="p-2 whitespace-nowrap text-zinc-400">
+                  <tr key={`${r.transactionId}-${r.code}`} className="border-t border-zinc-200 dark:border-zinc-800">
+                    <td className="p-2 whitespace-nowrap text-zinc-500 dark:text-zinc-400">
                       {r.soldOn}
-                      <div className="text-xs text-zinc-500">{r.eventName || "no show"}</div>
+                      <div className="text-xs text-zinc-400 dark:text-zinc-500">{r.eventName || "no show"}</div>
                     </td>
                     <td className="p-2">
                       <div className="font-medium">
                         {r.name} {r.badge && <Badge tone={r.kind === "slab" ? "blue" : "zinc"}>{r.badge}</Badge>} {r.how === "traded" && <Badge tone="amber">traded</Badge>}
                       </div>
-                      <div className="text-xs text-zinc-400">
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
                         <span className="font-mono">{r.code}</span> {[r.setName, r.cardNumber && `#${r.cardNumber}`].filter(Boolean).join(" ")}
                       </div>
                     </td>
@@ -268,7 +268,7 @@ export function GainsView({
                 ))}
                 {rRows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-zinc-400">
+                    <td colSpan={6} className="p-6 text-center text-zinc-500 dark:text-zinc-400">
                       {realized.length === 0 ? "Nothing sold yet." : "Nothing matches this filter."}
                     </td>
                   </tr>

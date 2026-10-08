@@ -32,10 +32,10 @@ export default async function PrintInventory() {
         <h1 className="text-2xl font-semibold">Inventory list ({rows.length})</h1>
         <PrintButton />
       </div>
-      <p className="text-sm text-zinc-400 print:hidden">Sorted by sticker code. Print it before the show in case the phone dies; write sales on the back.</p>
+      <p className="text-sm text-zinc-500 dark:text-zinc-400 print:hidden">Sorted by sticker code. Print it before the show in case the phone dies; write sales on the back.</p>
       <table className="w-full text-xs">
         <thead className="text-left">
-          <tr className="border-b border-zinc-500">
+          <tr className="border-b border-zinc-400 dark:border-zinc-500">
             <th className="py-1">Code</th>
             <th className="py-1">Card</th>
             <th className="py-1">Set</th>
@@ -45,7 +45,7 @@ export default async function PrintInventory() {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.code} className="border-b border-zinc-800 break-inside-avoid">
+            <tr key={r.code} className="border-b border-zinc-200 dark:border-zinc-800 break-inside-avoid">
               <td className="py-0.5 font-mono">{r.code}</td>
               <td className="py-0.5">{r.name}</td>
               <td className="py-0.5">{[r.setName, r.cardNumber && `#${r.cardNumber}`].filter(Boolean).join(" ")}</td>

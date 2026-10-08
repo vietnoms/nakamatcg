@@ -28,7 +28,7 @@ export function Nav() {
           prefetch={n.href === "/pos" ? false : undefined}
           className={clsx(
             "shrink-0 rounded px-2.5 py-1.5 text-sm",
-            active(n.href) ? "bg-zinc-100 font-medium text-zinc-950" : "text-zinc-300 hover:bg-zinc-800",
+            active(n.href) ? "bg-zinc-900 dark:bg-zinc-100 font-medium text-white dark:text-zinc-950" : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800",
           )}
         >
           {n.label}
