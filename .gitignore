@@ -1,0 +1,34 @@
+# secrets: names only live in .env.example
+.env
+.env.*
+!.env.example
+
+# real collection exports stay out of the repo; synthetic fixtures only
+*.csv
+!fixtures/**/*.csv
+*.zpl
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# build and test output
+build/
+dist/
+coverage/
+*.tsbuildinfo
+.vitest/
+
+# tooling
+.vercel
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+*.pem
+npm-debug.log*
+pnpm-debug.log*
