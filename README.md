@@ -32,6 +32,8 @@ a phone that keeps working with no signal.
 - **Buy:** search or type the card, the price fills from market and your cash-offer %, Confirm.
   Bought cards wait in the laptop's label queue for stickers.
 - **Trade:** scan your cards out, add theirs in at trade-in %, the difference is paid either way.
+- **Customer's card unknown?** On Buy or Trade, tap **Take photo**: CardSight (Claude as backup) reads the
+  card or slab, and the TCGplayer price fills in. Or type a few words in **search prices**. Needs signal.
 - No signal: keep selling. The header shows how many deals are waiting; they sync on their own.
 
 **After the show:** Sales shows revenue, profit, payment totals, and the cash box count. Export the
@@ -63,6 +65,9 @@ runs the offline rehearsal in the installed Edge against a running server; see t
    - `PUBLIC_BASE_URL`: the address printed into every QR code. **Pick it before printing
      stickers**; changing it later breaks camera-app links on old stickers (in-app scanning still works).
    - `APP_TZ`: e.g. `America/Los_Angeles`.
+   - `CARDSIGHT_API_KEY` (free key at cardsight.ai) and `ANTHROPIC_API_KEY` (console.anthropic.com):
+     photo lookup on Buy and Trade. Either one alone works; CardSight is tried first.
+   - `CRON_SECRET`: any long random string; lets Vercel's nightly price-catalog refresh in.
 3. Run the migrations against the production database: `DATABASE_URL=... pnpm db:migrate`.
 4. Deploy, then sign in at `/login`.
 

@@ -48,5 +48,15 @@ overrides the default.
 cost; realized = each card's share of its deal minus its cost, voided deals excluded. Copies with no
 cost (Collectr's 0.0000) or no market price are counted but left out of the totals, never treated as $0.
 
+**Photo lookup for cards coming in.** Viet chose CardSight (free tier, 750 identifications a month;
+reads raw cards and slab labels for Pokemon and One Piece) with Claude vision as the backup when
+CardSight is unsure, fails, or names a card the price catalog doesn't have. Claude runs
+`claude-opus-5-5` at low effort with structured output and `fallbacks: "default"`. Raw prices come
+from TCGplayer's catalog via tcgcsv.com (the source Collectr uses for raw cards), synced nightly by a
+Vercel cron into `catalog_items` (about 55,000 prices, a few seconds). Slab prices are the median of
+CardSight's last 90 days of sales at that company and grade, when CardSight identified the card.
+Scrydex was considered; its $29 plan has neither vision nor graded prices. Lookup needs signal; the
+form still works by hand offline.
+
 **Not built yet (after the show):** re-sticker warnings page (`/restick`) comparing sticker prices
 with fresh suggestions; automatic price refresh (tcgcsv.com for raw cards); sales tax.
