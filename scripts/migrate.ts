@@ -13,6 +13,13 @@ try {
   // no .env.local: use the environment as is
 }
 
+// On Vercel this runs in every build (package.json "vercel-build"); only production migrates,
+// so a preview build of a branch can never change the live schema.
+if (process.env.VERCEL && process.env.VERCEL_ENV !== "production") {
+  console.log(`migrations skipped (${process.env.VERCEL_ENV ?? "unknown"} build)`);
+  process.exit(0);
+}
+
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is not set");
