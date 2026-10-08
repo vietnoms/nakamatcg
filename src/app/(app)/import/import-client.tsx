@@ -10,6 +10,22 @@ import { commitImport, previewImport } from "./actions";
 
 type Preview = ImportPlan & { skipped: { line: number; reason: string; name: string }[] };
 
+const EXCLUDED_KEY = "nk:import:excluded-portfolios";
+function loadExcluded(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(EXCLUDED_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+function saveExcluded(names: string[]) {
+  try {
+    localStorage.setItem(EXCLUDED_KEY, JSON.stringify(names));
+  } catch {
+    // storage blocked: the choice just isn't remembered
+  }
+}
+
 export function ImportClient() {
   const [file, setFile] = useState<{ name: string; text: string } | null>(null);
   const [mapping, setMapping] = useState<Mapping | null>(null);
@@ -20,6 +36,7 @@ export function ImportClient() {
   const [pending, start] = useTransition();
 
   const parsed = useMemo(() => (file ? parseCsv(file.text) : null), [file]);
+  const missingColumns = mapping !== null && (mapping.name === null || (mapping.market === null && mapping.marketTotal === null));
 
   // every portfolio named in the file, with its row count, so a personal collection can be left out
   const allPortfolios = useMemo(() => {
@@ -32,16 +49,28 @@ export function ImportClient() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [parsed, mapping]);
 
+  const [dragging, setDragging] = useState(false);
+
   async function onFile(f: File | undefined) {
     setPreview(null);
     setResult(null);
     setError(null);
     if (!f) return;
     const text = await f.text();
-    const { headers } = parseCsv(text);
+    const { headers, rows } = parseCsv(text);
+    const m = detectMapping(headers);
     setFile({ name: f.name, text });
-    setMapping(detectMapping(headers));
-    setPortfolios(null);
+    setMapping(m);
+    // leave out the portfolios you left out last time
+    const excluded = new Set(loadExcluded());
+    const names = m.portfolio === null ? [] : [...new Set(rows.map((r) => (r[m.portfolio!] ?? "").trim()))];
+    setPortfolios(names.some((n) => excluded.has(n)) ? names.filter((n) => !excluded.has(n)) : null);
+  }
+
+  function choosePortfolios(next: string[]) {
+    setPreview(null);
+    setPortfolios(next);
+    saveExcluded(allPortfolios.map(([p]) => p).filter((p) => !next.includes(p)));
   }
 
   function input() {
@@ -73,74 +102,101 @@ export function ImportClient() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          onChange={(e) => void onFile(e.target.files?.[0])}
-          className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-white"
-        />
-        {parsed && (
-          <p className="mt-2 text-sm text-zinc-500">
-            {parsed.rows.length} rows, {parsed.headers.length} columns
-          </p>
-        )}
-      </Card>
+      <label
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          void onFile(e.dataTransfer.files?.[0]);
+        }}
+        className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center ${
+          dragging ? "border-sky-500 bg-sky-50" : "border-zinc-300 bg-white hover:border-zinc-400"
+        }`}
+      >
+        <span className="text-sm font-medium">{file ? file.name : "Drop your Collectr CSV here, or click to choose it"}</span>
+        <span className="text-xs text-zinc-500">
+          {parsed ? `${parsed.rows.length} rows, ${parsed.headers.length} columns. Drop another file to replace it.` : "Nothing is saved until you press Import."}
+        </span>
+        <input type="file" accept=".csv,text/csv" onChange={(e) => void onFile(e.target.files?.[0])} className="sr-only" />
+      </label>
 
       {parsed && mapping && (
-        <Card title="Columns (detected from the header; fix any that are wrong)">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {FIELDS.map((f: Field) => (
-              <label key={f} className="flex items-center justify-between gap-2 text-sm">
-                <span className={f === "name" ? "font-medium" : "text-zinc-600"}>{FIELD_LABELS[f]}</span>
-                <Select
-                  value={mapping[f] ?? ""}
-                  onChange={(e) => {
-                    setPreview(null);
-                    setMapping({ ...mapping, [f]: e.target.value === "" ? null : Number(e.target.value) });
-                  }}
-                  className="w-44"
-                >
-                  <option value="">(none)</option>
-                  {parsed.headers.map((h, i) => (
-                    <option key={i} value={i}>
-                      {h || `Column ${i + 1}`}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            ))}
-          </div>
-
+        <Card>
           {allPortfolios.length > 1 && (
-            <div className="mt-4 border-t border-zinc-100 pt-3">
-              <p className="mb-2 text-sm font-medium">Portfolios to import (leave your personal collection out)</p>
-              <div className="flex flex-wrap gap-3">
+            <div className="mb-4">
+              <p className="mb-2 text-sm font-medium">Which portfolios are you bringing?</p>
+              <div className="flex flex-wrap gap-2">
                 {allPortfolios.map(([name, n]) => {
                   const on = portfolios === null || portfolios.includes(name);
                   return (
-                    <label key={name} className="flex items-center gap-1.5 text-sm">
+                    <label
+                      key={name}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
+                        on ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300 bg-white text-zinc-500 line-through"
+                      }`}
+                    >
                       <input
                         type="checkbox"
+                        className="sr-only"
                         checked={on}
                         onChange={() => {
-                          setPreview(null);
                           const current = portfolios ?? allPortfolios.map(([p]) => p);
-                          setPortfolios(on ? current.filter((p) => p !== name) : [...current, name]);
+                          choosePortfolios(on ? current.filter((p) => p !== name) : [...current, name]);
                         }}
                       />
-                      {name || "(no portfolio)"} <span className="text-zinc-400">({n})</span>
+                      {name || "(no portfolio)"} <span className={on ? "text-zinc-300" : "text-zinc-400"}>{n}</span>
                     </label>
                   );
                 })}
               </div>
+              <p className="mt-1.5 text-xs text-zinc-500">Tap to leave a portfolio out. Remembered for your next import.</p>
             </div>
           )}
 
-          <div className="mt-4 flex gap-2">
+          <details open={missingColumns} className="text-sm">
+            <summary className="cursor-pointer select-none text-zinc-600">
+              {missingColumns ? (
+                <span className="font-medium text-amber-700">Pick the columns marked below</span>
+              ) : (
+                <span>Columns matched automatically (name, set, number, quantity, price, cost, grade). Check or change</span>
+              )}
+            </summary>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {FIELDS.map((f: Field) => (
+                <label key={f} className="flex items-center justify-between gap-2">
+                  <span className={f === "name" || f === "market" ? "font-medium" : "text-zinc-600"}>
+                    {FIELD_LABELS[f]}
+                    {(f === "name" || f === "market") && mapping[f] === null && <span className="text-amber-700"> (needed)</span>}
+                  </span>
+                  <Select
+                    value={mapping[f] ?? ""}
+                    onChange={(e) => {
+                      setPreview(null);
+                      setMapping({ ...mapping, [f]: e.target.value === "" ? null : Number(e.target.value) });
+                    }}
+                    className="w-44"
+                  >
+                    <option value="">(none)</option>
+                    {parsed.headers.map((h, i) => (
+                      <option key={i} value={i}>
+                        {h || `Column ${i + 1}`}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              ))}
+            </div>
+          </details>
+
+          <div className="mt-4 flex items-center gap-3">
             <Button onClick={runPreview} disabled={pending || mapping.name === null}>
               {pending && !preview ? "Checking..." : "Preview"}
             </Button>
+            <span className="text-xs text-zinc-500">Shows what would change. Nothing is saved yet.</span>
           </div>
         </Card>
       )}

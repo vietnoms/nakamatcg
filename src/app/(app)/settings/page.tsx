@@ -10,8 +10,9 @@ export default async function SettingsPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Settings</h1>
       <p className="text-sm text-zinc-500">
-        Sticker link base: <code className="rounded bg-zinc-100 px-1">{process.env.PUBLIC_BASE_URL || "(not set)"}</code>. Set
-        on the server as PUBLIC_BASE_URL; it is printed into every QR code.
+        Sticker QR codes link to <code className="rounded bg-zinc-100 px-1">{process.env.PUBLIC_BASE_URL || "(not set)"}</code>. It is
+        set on the server (PUBLIC_BASE_URL) and should never change once stickers are printed. Phones pick up changes here on
+        their next sync.
       </p>
       <SettingsForms settings={settings} />
     </div>

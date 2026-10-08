@@ -9,6 +9,7 @@ import type { PricingRow } from "@/server/inventory";
 import { savePrice, savePrices } from "./actions";
 
 type Filter = "all" | "unpriced" | "priced";
+type Sort = "set" | "market-desc" | "market-asc" | "name";
 
 const dollars = (c: number | null) => (c === null ? "" : (c / 100).toFixed(2).replace(/\.00$/, ""));
 
@@ -20,6 +21,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
   const [filter, setFilter] = useState<Filter>("unpriced");
   const [kind, setKind] = useState("");
   const [set, setSet] = useState("");
+  const [sort, setSort] = useState<Sort>("set");
   const [bulkPending, startBulk] = useTransition();
   const inputs = useRef(new Map<string, HTMLInputElement>());
   // Enter moves focus on, which blurs the row it just saved: that blur must not save again
@@ -29,16 +31,21 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter(
+    const list = rows.filter(
       (r) =>
         (filter === "all" || (filter === "unpriced" ? r.priceCents === null : r.priceCents !== null)) &&
         (!kind || r.kind === kind) &&
         (!set || r.setName === set) &&
         (!needle || `${r.name} ${r.setName} ${r.cardNumber}`.toLowerCase().includes(needle)),
     );
+    const m = (r: PricingRow) => r.marketCents ?? -1;
+    if (sort === "market-desc") list.sort((a, b) => m(b) - m(a));
+    else if (sort === "market-asc") list.sort((a, b) => m(a) - m(b));
+    else if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    return list;
     // the list is filtered once per filter change, not on every save, so a just-priced row stays put
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, filter, kind, set, initial]);
+  }, [q, filter, kind, set, sort, initial]);
 
   const totals = useMemo(
     () => ({
@@ -125,11 +132,25 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
             </option>
           ))}
         </Select>
+        <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+          <option value="set">Sort: set, then name</option>
+          <option value="market-desc">Sort: most valuable first</option>
+          <option value="market-asc">Sort: cheapest first</option>
+          <option value="name">Sort: name</option>
+        </Select>
         <Button variant="secondary" onClick={acceptAllSuggested} disabled={bulkPending}>
           {bulkPending ? "Saving..." : "Accept suggested for unpriced in view"}
         </Button>
-        <span className="ml-auto text-sm text-zinc-500">
-          {totals.unpriced} of {totals.copies} copies unpriced
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-200">
+          <div
+            className="h-full rounded-full bg-green-600 transition-all"
+            style={{ width: `${totals.copies ? Math.round(((totals.copies - totals.unpriced) * 100) / totals.copies) : 0}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-sm tabular-nums text-zinc-600">
+          {totals.copies - totals.unpriced} of {totals.copies} copies priced
         </span>
       </div>
 
@@ -206,6 +227,11 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
                         }}
                       />
                     </div>
+                    {r.priceCents !== null && r.marketCents ? (
+                      <div className={`mt-0.5 text-xs tabular-nums ${Math.abs(r.priceCents / r.marketCents - 1) > 0.5 ? "font-medium text-amber-700" : "text-zinc-400"}`}>
+                        {Math.round((r.priceCents * 100) / r.marketCents)}% of market
+                      </div>
+                    ) : null}
                   </td>
                 </tr>
               );
