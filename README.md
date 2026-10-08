@@ -35,7 +35,9 @@ a phone that keeps working with no signal.
 - No signal: keep selling. The header shows how many deals are waiting; they sync on their own.
 
 **After the show:** Sales shows revenue, profit, payment totals, and the cash box count. Export the
-sold cards CSV to remove them from Collectr.
+sold cards CSV to remove them from Collectr. **Gains** sorts every card by gain or loss against your
+cost: in stock against today's market price (unrealized), sold against what it brought in
+(realized); both export as CSV for your P&L.
 
 ## Setup
 

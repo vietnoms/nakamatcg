@@ -38,5 +38,15 @@ as cost basis.
 **Auth.** One passcode (scrypt hash in `APP_PASSCODE_HASH`, colon-separated because Next expands `$`
 in `.env` files) and a 90-day signed cookie. Failed logins are rate limited per IP.
 
+## 2026-10-08
+
+**Whole-dollar prices.** Viet asked for suggestions rounded up to the dollar, no $0.50 prices: under
+$50 rounds up to the next dollar, $50 and up to the next $5, never below $1. A rule saved in Settings
+overrides the default.
+
+**Gain and loss.** Unrealized = last imported market price minus each copy's cost, grouped by card and
+cost; realized = each card's share of its deal minus its cost, voided deals excluded. Copies with no
+cost (Collectr's 0.0000) or no market price are counted but left out of the totals, never treated as $0.
+
 **Not built yet (after the show):** re-sticker warnings page (`/restick`) comparing sticker prices
 with fresh suggestions; automatic price refresh (tcgcsv.com for raw cards); sales tax.

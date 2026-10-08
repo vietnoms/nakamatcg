@@ -15,15 +15,15 @@ export type PricingRule = {
   minCents: number;
 };
 
+/** Whole dollars, rounded up (Viet, 2026-10-08: no $0.50 prices); $5 steps from $50. */
 export const DEFAULT_PRICING: PricingRule = {
   percent: 100,
-  mode: "nearest",
+  mode: "up",
   tiers: [
-    { belowCents: 500, stepCents: 50 },
     { belowCents: 5000, stepCents: 100 },
     { belowCents: null, stepCents: 500 },
   ],
-  minCents: 50,
+  minCents: 100,
 };
 
 export type RestickThreshold = { percent: number; minCents: number };
