@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`labelZpl > matches the reviewed layout 1`] = `
+"^XA
+^MMT
+^MTD
+^PW305
+^LL203
+^LH0,0
+^PR3
+^MD0
+^FO10,0^BQN,2,4^FDMM,AHTTPS://CARDS.EXAMPLE.COM/U/K7M2QX^FS
+^FO118,10^A0N,60,60^FD$125^FS
+^FO118,74^A0N,22,22^FDK7M2QX^FS
+^FO118,100^A0N,22,22^FDPSA 10^FS
+^FO118,100^A0N,22,22^FB177,1,0,R^FD10/09^FS
+^FO10,126^A0N,24,24^FDUmbreon VMAX^FS
+^FO10,150^A0N,24,24^FD(Alternate Full Art)^FS
+^FO10,176^A0N,20,20^FDEvolving Skies 215/203^FS
+^PQ1
+^XZ"
+`;
