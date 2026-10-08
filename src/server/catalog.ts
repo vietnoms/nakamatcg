@@ -119,6 +119,11 @@ export async function syncCatalog(db: Db, fetchJson: Fetcher = defaultFetch, opt
   }
 }
 
+export async function catalogIsEmpty(db: Db): Promise<boolean> {
+  const [row] = await db.select({ id: catalogItems.id }).from(catalogItems).limit(1);
+  return !row;
+}
+
 export async function catalogStatus(db: Db) {
   const [last] = await db.select().from(catalogSyncs).orderBy(desc(catalogSyncs.startedAt)).limit(1);
   const [lastOk] = await db

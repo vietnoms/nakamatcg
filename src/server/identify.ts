@@ -1,7 +1,7 @@
 import "server-only";
 import type { Db } from "@/db/client";
 import { pickPrinting, rankCandidates, type CardRead, type CatalogCandidate, type Game } from "@/lookup/match";
-import { candidatesFor } from "./catalog";
+import { candidatesFor, catalogIsEmpty } from "./catalog";
 
 export type Image = { bytes: ArrayBuffer; mediaType: string };
 export type Confidence = "high" | "medium" | "low";
@@ -47,6 +47,8 @@ export async function lookupCard(
 ): Promise<LookupResult> {
   const notes: string[] = [];
   if (!deps.cardsight && !deps.claude) notes.push("No photo service is set up (CARDSIGHT_API_KEY or ANTHROPIC_API_KEY)");
+  // without prices every scan looks like a miss: say why
+  if (await catalogIsEmpty(db)) notes.push("The price catalog is empty: Settings > Refresh prices now");
 
   const cs = await attempt("CardSight", deps.cardsight, img, game, notes);
   let used: ProviderRead | null = cs && cs.confidence !== "low" ? cs : null;
