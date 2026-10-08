@@ -160,6 +160,42 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
             <Input type="number" value={label.offsetYDots} onChange={(e) => setLabel({ ...label, offsetYDots: Number(e.target.value) })} className="w-20 text-right" />
           </label>
           <p className="col-span-2 text-xs text-zinc-500 dark:text-zinc-400">Shifts are in printer dots (203 per inch). Print a test sticker after changing anything.</p>
+          <label className="col-span-2 flex items-center gap-2">
+            Layout
+            <Select value={label.layout} onChange={(e) => setLabel({ ...label, layout: e.target.value === "fold" ? "fold" : "standard" })}>
+              <option value="standard">Standard: everything on the front</option>
+              <option value="fold">Fold-over: price on the front, QR on the back</option>
+            </Select>
+          </label>
+          {label.layout === "fold" && (
+            <>
+              <label className="flex items-center gap-2">
+                Front strip
+                <Select value={label.foldFrontIn} onChange={(e) => setLabel({ ...label, foldFrontIn: Number(e.target.value) })}>
+                  {[0.35, 0.4, 0.45, 0.5, 0.55, 0.6].map((v) => (
+                    <option key={v} value={v}>
+                      {v} in
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex items-center gap-2">
+                Edge
+                <Select value={label.foldGapIn} onChange={(e) => setLabel({ ...label, foldGapIn: Number(e.target.value) })}>
+                  {[0, 0.04, 0.06, 0.08, 0.1, 0.12].map((v) => (
+                    <option key={v} value={v}>
+                      {v} in
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <p className="col-span-2 text-xs text-zinc-500 dark:text-zinc-400">
+                The left strip (price and condition) goes on the front of the toploader at its right edge; the rest wraps around
+                that edge onto the back, where the QR code, sticker code, name and set are. <b>Edge</b> is the blank band that sits
+                on the toploader&apos;s side: about its thickness. The tick marks on the sticker show where to bend it.
+              </p>
+            </>
+          )}
           <div className="col-span-2 flex items-center gap-3">
             <Button disabled={pending} onClick={() => save("label", label)}>
               Save
