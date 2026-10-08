@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { catalogItems } from "@/db/schema";
 import { rankCandidates } from "@/lookup/match";
-import { candidatesFor, catalogStatus, searchCatalog, syncCatalog, type Fetcher } from "@/server/catalog";
+import { candidatesFor, catalogIsEmpty, catalogStatus, searchCatalog, syncCatalog, type Fetcher } from "@/server/catalog";
 import { testDb } from "./db";
 
 let db: Db;
@@ -41,6 +41,10 @@ function fakeTcgcsv(market = 71.2): Fetcher {
 }
 
 describe("syncCatalog", () => {
+  it("starts empty", async () => {
+    expect(await catalogIsEmpty(db)).toBe(true);
+  });
+
   it("stores one row per product and printing, with market prices in cents", async () => {
     const res = await syncCatalog(db, fakeTcgcsv());
     expect(res).toEqual({ items: 5, sets: 2 });

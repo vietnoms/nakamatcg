@@ -98,7 +98,9 @@ Report what is printed; leave a field empty rather than guess. The collector num
 
 export function claudeProvider(): Provider | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  const client = new Anthropic();
+  // an organization-wide key (not scoped to one workspace) must name its workspace on every request
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
+  const client = new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
   return async (img, game) => {
     const res = await client.beta.messages.parse({
       model: "claude-opus-5-5",

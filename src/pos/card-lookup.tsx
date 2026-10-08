@@ -200,7 +200,7 @@ export function CardLookup({ onFill }: { onFill: (f: LookupFill) => void }) {
           {read ? (
             <p className="text-xs text-zinc-600">
               Read by {result.source === "cardsight" ? "CardSight" : "Claude"} ({result.confidence}):{" "}
-              <b>{[read.name, read.number, read.graded && `${read.graded.company} ${read.graded.grade}`].filter(Boolean).join(" · ")}</b>
+              <b>{[read.name, read.setName, read.number && `#${read.number}`, read.graded && `${read.graded.company} ${read.graded.grade}`].filter(Boolean).join(" · ")}</b>
             </p>
           ) : (
             <p className="text-xs text-amber-700">Couldn&apos;t read the card. Try again closer, with less glare, or search by name.</p>
@@ -219,7 +219,31 @@ export function CardLookup({ onFill }: { onFill: (f: LookupFill) => void }) {
               ))}
             </ul>
           ) : (
-            read && <p className="mt-1 text-xs text-zinc-500">No match in the price catalog. Search by name below, or fill it in by hand.</p>
+            read && (
+              <div className="mt-1 space-y-1">
+                <p className="text-xs text-zinc-500">No match in the price catalog. Search by name above, or use what was read and add the price yourself.</p>
+                <button
+                  type="button"
+                  className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+                  onClick={() => {
+                    onFill({
+                      kind: read.graded ? "slab" : "raw",
+                      name: read.name,
+                      setName: read.setName,
+                      cardNumber: read.number,
+                      variant: "",
+                      grader: read.graded?.company ?? "",
+                      grade: read.graded?.grade ?? "",
+                      cert: read.graded?.cert ?? "",
+                      marketCents: read.graded ? (result.graded?.medianCents ?? null) : null,
+                    });
+                    setResult(null);
+                  }}
+                >
+                  Use what was read
+                </button>
+              </div>
+            )
           )}
           {result.notes.length > 0 && <p className="mt-1 text-[11px] text-zinc-400">{result.notes.join(" · ")}</p>}
           <button type="button" className="mt-1 text-xs text-zinc-500 underline" onClick={() => setResult(null)}>
