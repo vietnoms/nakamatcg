@@ -9,6 +9,7 @@ import { roundPrice, suggestPrice, type PricingRule } from "@/lib/pricing";
 import type { PaymentMethod } from "@/lib/settings";
 import { posDb } from "./db";
 import { remember, remembered } from "./persist";
+import { CardLookup, type LookupFill } from "./card-lookup";
 import type { PosProduct, PosUnit } from "./types";
 
 export const money = formatCents;
@@ -238,10 +239,33 @@ export function IncomingForm({
     setMarket(m.marketCents);
   }
 
+  function applyLookup(f: LookupFill) {
+    picked.current = f.name;
+    setMatches([]);
+    setP((x) => ({
+      ...x,
+      kind: f.kind,
+      name: f.name,
+      setName: f.setName,
+      cardNumber: f.cardNumber,
+      variant: f.variant,
+      grader: f.grader || x.grader,
+      grade: f.grade,
+      cert: f.cert,
+      marketCents: f.marketCents,
+    }));
+    if (f.marketCents !== null) setMarket(f.marketCents);
+    else {
+      setEach(null);
+      setPrice(null);
+    }
+  }
+
   const ok = p.name.trim() && each !== null && qty >= 1;
 
   return (
     <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-3">
+      <CardLookup onFill={applyLookup} />
       <div className="grid grid-cols-3 gap-1 rounded-md bg-zinc-100 p-1 text-sm">
         {(["raw", "slab", "sealed"] as const).map((k) => (
           <button key={k} type="button" onClick={() => setP({ ...p, kind: k })} className={clsx("rounded py-1.5", p.kind === k && "bg-white font-medium shadow-sm")}>

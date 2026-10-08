@@ -5,7 +5,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, isValidSession } from "@/auth/session";
 
-const PUBLIC = [/^\/login(\/|$)/, /^\/sw\.js$/, /^\/manifest\.webmanifest$/, /^\/icons\//, /^\/vendor\//, /^\/api\/health$/];
+const PUBLIC = [/^\/login(\/|$)/, /^\/sw\.js$/, /^\/manifest\.webmanifest$/, /^\/icons\//, /^\/vendor\//, /^\/api\/health$/, /^\/api\/cron\//];
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

@@ -25,7 +25,9 @@
     "e2e:offline": "tsx scripts/e2e-offline.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
     "barcode-detector": "3.2.2",
+    "cardsightai": "4.1.0",
     "clsx": "2.1.1",
     "dexie": "4.4.6",
     "drizzle-orm": "0.45.2",
