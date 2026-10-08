@@ -39,11 +39,11 @@ export function LabelPreview({ data, settings, baseUrl, scale = 2.4 }: { data: L
       <text x={x0} y={m + ph + 4 + 18} fontSize={22}>
         {data.code}
       </text>
-      <text x={x0} y={m + ph + 4 + 22 + 4 + 18} fontSize={22}>
-        {zplText(data.badge)}
-      </text>
-      <text x={W - m} y={m + ph + 4 + 22 + 4 + 18} fontSize={22} textAnchor="end">
+      <text x={W - m} y={m + ph + 4 + 18} fontSize={22} textAnchor="end">
         {data.pricedOn}
+      </text>
+      <text x={x0} y={m + ph + 4 + 22 + 4 + 18} fontSize={Math.max(16, Math.min(22, Math.floor((W - x0 - m) / (Math.max(1, zplText(data.badge).length) * 0.56))))}>
+        {zplText(data.badge)}
       </text>
       {nameLines.map((line, i) => (
         <text key={i} x={m} y={nameY + i * 24 + 20} fontSize={24}>

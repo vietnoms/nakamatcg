@@ -1,7 +1,8 @@
 /**
- * Collectr portfolio CSV -> import rows. Pure. Collectr's exact header is not pinned yet, so
- * columns are found by name (aliases below) and the import page lets the user correct the
- * mapping before anything is written.
+ * Collectr portfolio CSV -> import rows. Pure. Columns are found by name (aliases below; the real
+ * 2026-10-08 export header is pinned in fixtures/collectr/sample.csv) and the import page lets the
+ * user correct the mapping before anything is written. Collectr dates its price column
+ * ("Market Price (As of 2026-10-08)"), so multi-word aliases also match as a prefix.
  */
 import Papa from "papaparse";
 import { parseDollars } from "@/lib/money";
@@ -13,6 +14,7 @@ export const FIELDS = [
   "quantity",
   "market",
   "marketTotal",
+  "priceOverride",
   "cost",
   "condition",
   "grader",
@@ -35,6 +37,7 @@ export const FIELD_LABELS: Record<Field, string> = {
   quantity: "Quantity",
   market: "Market price (each)",
   marketTotal: "Market value (total)",
+  priceOverride: "Your own price (overrides market)",
   cost: "Cost paid (each)",
   condition: "Condition",
   grader: "Grading company",
@@ -67,6 +70,7 @@ const ALIASES: Record<Field, string[]> = {
     "price estimate",
   ],
   marketTotal: ["total market value", "total value", "market value", "total price", "total"],
+  priceOverride: ["price override", "custom price", "override price", "override"],
   cost: ["average cost paid", "avg cost paid", "average cost", "avg cost", "cost paid", "my cost", "purchase price", "price paid", "cost"],
   condition: ["condition", "card condition"],
   grader: ["grading company", "grade company", "grade issuer", "grader", "grading service", "graded by"],
@@ -92,17 +96,23 @@ export function detectMapping(headers: string[]): Mapping {
   const norm = headers.map(normHeader);
   const used = new Set<number>();
   const mapping = Object.fromEntries(FIELDS.map((f) => [f, null])) as Mapping;
-  // exact alias matches only: a fuzzy "price" match on "Price Paid" would read cost as market
-  for (const field of FIELDS) {
-    for (const alias of ALIASES[field]) {
-      const i = norm.findIndex((h, idx) => h === alias && !used.has(idx));
-      if (i >= 0) {
-        mapping[field] = i;
-        used.add(i);
-        break;
+  const pass = (matches: (header: string, alias: string) => boolean) => {
+    for (const field of FIELDS) {
+      if (mapping[field] !== null) continue;
+      for (const alias of ALIASES[field]) {
+        const i = norm.findIndex((h, idx) => !used.has(idx) && matches(h, alias));
+        if (i >= 0) {
+          mapping[field] = i;
+          used.add(i);
+          break;
+        }
       }
     }
-  }
+  };
+  // exact matches first; a fuzzy "price" match on "Price Paid" would read cost as market
+  pass((h, a) => h === a);
+  // then dated or annotated headers, multi-word aliases only: "market price as of 2026 10 08"
+  pass((h, a) => a.includes(" ") && h.startsWith(`${a} `));
   return mapping;
 }
 
@@ -151,12 +161,28 @@ const clean = (v: string | undefined) => {
 
 const GRADERS = ["PSA", "BGS", "BECKETT", "CGC", "SGC", "TAG", "ACE", "AGS", "ARS", "PCA", "HGA", "GMA", "MNT"];
 
-/** "PSA 10" in one column -> ["PSA", "10"]; a bare "10" stays a grade. */
+/** Qualifiers that change a slab's price and stay in the grade; "GEM - MT", "Mint" and the like don't. */
+const GRADE_QUALIFIERS: [RegExp, string][] = [
+  [/pristine/i, "Pristine"],
+  [/black\s*label/i, "Black Label"],
+  [/perfect/i, "Perfect"],
+];
+
+/** "10.0 GEM - MT" -> "10", "10.0 Pristine" -> "10 Pristine", "9.5" -> "9.5". Anything else unchanged. */
+export function shortGrade(grade: string): string {
+  const m = /^(\d+(?:\.\d+)?)\b\s*(.*)$/.exec(grade.trim());
+  if (!m) return grade.trim();
+  const num = String(Number(m[1]));
+  const q = GRADE_QUALIFIERS.find(([re]) => re.test(m[2] ?? ""))?.[1];
+  return q ? `${num} ${q}` : num;
+}
+
+/** "PSA 10.0 GEM - MT" in one column -> ["PSA", "10"]; a bare "10" stays a grade. */
 export function splitGrade(grader: string, grade: string): { grader: string; grade: string } {
-  if (grader || !grade) return { grader: grader.toUpperCase(), grade };
+  if (grader || !grade) return { grader: grader.toUpperCase(), grade: grade ? shortGrade(grade) : grade };
   const m = new RegExp(`^(${GRADERS.join("|")})\\s*(.*)$`, "i").exec(grade);
-  if (m) return { grader: (m[1] ?? "").toUpperCase(), grade: (m[2] ?? "").trim() };
-  return { grader: "", grade };
+  if (m) return { grader: (m[1] ?? "").toUpperCase(), grade: shortGrade(m[2] ?? "") };
+  return { grader: "", grade: shortGrade(grade) };
 }
 
 const CONDITIONS: [RegExp, string][] = [
@@ -222,6 +248,11 @@ export function parseRows(rows: string[][], mapping: Mapping): { items: ImportRo
       const total = parseDollars(get(row, "marketTotal"));
       if (total !== null) marketCents = Math.round(total / quantity);
     }
+    // a price you set yourself in Collectr wins over its market price (0 means none set)
+    const override = parseDollars(get(row, "priceOverride"));
+    if (override) marketCents = override;
+    // Collectr exports a cost nobody entered as 0.0000: unknown, not free
+    const cost = parseDollars(get(row, "cost"));
 
     const { grader, grade } = splitGrade(get(row, "grader"), get(row, "grade"));
     const base = {
@@ -245,7 +276,7 @@ export function parseRows(rows: string[][], mapping: Mapping): { items: ImportRo
       portfolio: get(row, "portfolio"),
       quantity,
       marketCents,
-      costCents: parseDollars(get(row, "cost")),
+      costCents: cost ? cost : null,
       notes: get(row, "notes"),
     });
   });

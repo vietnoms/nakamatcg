@@ -4,8 +4,8 @@
  *
  *   +-----------+------------------+
  *   | QR code   | $125             |
- *   | (sticker  | K7M2QX           |
- *   |  link)    | PSA 10    10/09  |
+ *   | (sticker  | K7M2QX    10/09  |
+ *   |  link)    | CGC 10 Pristine  |
  *   | Umbreon VMAX (alt art)       |
  *   | Evolving Skies 215/203       |
  *   +------------------------------+
@@ -145,7 +145,8 @@ export function labelZpl(d: LabelData, s: LabelSettings, baseUrl: string): strin
   const mag = Math.max(2, Math.round(4 * k));
   const q = qrModules(url) * mag;
 
-  // right column: price, code, badge and date
+  // right column: price; code with the date beside it; the badge with the whole width, its font
+  // shrinking to fit a long one ("CGC 10 Pristine")
   const x0 = m + q + px(8);
   const rw = W - x0 - m;
   const price = formatStickerPrice(d.priceCents);
@@ -153,7 +154,9 @@ export function labelZpl(d: LabelData, s: LabelSettings, baseUrl: string): strin
   const small = px(22);
   const codeY = m + ph + px(4);
   const badgeY = codeY + small + px(4);
-  const badge = truncate(zplText(d.badge), Math.max(1, fitChars(rw, small) - 6));
+  const badgeText = zplText(d.badge);
+  const badgeF = Math.max(px(16), Math.min(small, Math.floor(rw / (Math.max(1, badgeText.length) * ADVANCE))));
+  const badge = truncate(badgeText, fitChars(rw, badgeF));
 
   // bottom: two lines of name, one of set and number
   const tw = W - 2 * m;
@@ -172,8 +175,8 @@ export function labelZpl(d: LabelData, s: LabelSettings, baseUrl: string): strin
     `${qrFO(m, m)}^BQN,2,${mag}^FD${qrField(url)}^FS`,
     f(x0, m, ph, price),
     f(x0, codeY, small, d.code),
-    f(x0, badgeY, small, badge),
-    `^FO${x0},${badgeY}^A0N,${small},${small}^FB${rw},1,0,R^FD${zplText(d.pricedOn)}^FS`,
+    `^FO${x0},${codeY}^A0N,${small},${small}^FB${rw},1,0,R^FD${zplText(d.pricedOn)}^FS`,
+    badge ? f(x0, badgeY + (small - badgeF), badgeF, badge) : "",
     ...nameLines.map((line, i) => f(m, nameY + i * nameF, nameF, line)),
     detail ? f(m, detailY, detailF, detail) : "",
     "^PQ1",

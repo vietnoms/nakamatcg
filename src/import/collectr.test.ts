@@ -10,6 +10,7 @@ import {
   parseRows,
   productKind,
   shortCondition,
+  shortGrade,
   splitGrade,
 } from "./collectr";
 
@@ -24,7 +25,8 @@ describe("detectMapping", () => {
     expect(col(m.set)).toBe("Set");
     expect(col(m.number)).toBe("Card Number");
     expect(col(m.quantity)).toBe("Quantity");
-    expect(col(m.market)).toBe("Market Price");
+    expect(col(m.market)).toBe("Market Price (As of 2026-10-08)");
+    expect(col(m.priceOverride)).toBe("Price Override");
     expect(col(m.cost)).toBe("Average Cost Paid");
     expect(col(m.condition)).toBe("Card Condition");
     expect(col(m.grade)).toBe("Grade");
@@ -83,6 +85,21 @@ describe("parseRows", () => {
     expect(byName("Flabébé")).toMatchObject({ kind: "raw", costCents: null, marketCents: 12 });
   });
 
+  it("reads Collectr's long grades, a price override, and the game", () => {
+    expect(byName("Monkey.D.Luffy (Alternate Art)")).toMatchObject({
+      kind: "slab",
+      grader: "CGC",
+      grade: "10 Pristine",
+      marketCents: 163600,
+      game: "One Piece",
+      costCents: 12000,
+    });
+  });
+
+  it("treats Collectr's 0.0000 cost as unknown, not free", () => {
+    expect(byName("Flabébé")?.costCents).toBeNull();
+  });
+
   it("keeps the portfolio so the import page can leave a personal collection out", () => {
     expect(byName("Charizard")?.portfolio).toBe("Personal");
   });
@@ -92,7 +109,7 @@ describe("parseRows", () => {
       { line: 7, reason: "no name", name: "" },
       { line: 8, reason: 'quantity "0"', name: "Giratina V (Alternate Full Art)" },
     ]);
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(7);
   });
 
   it("gives the same card the same key, and different conditions different keys", () => {
@@ -115,7 +132,23 @@ describe("parseRows", () => {
 });
 
 describe("helpers", () => {
+  it("shortGrade keeps the number and the qualifiers that change price", () => {
+    expect(shortGrade("10.0 GEM - MT")).toBe("10");
+    expect(shortGrade("9.0 MINT")).toBe("9");
+    expect(shortGrade("9.5")).toBe("9.5");
+    expect(shortGrade("10.0 Pristine")).toBe("10 Pristine");
+    expect(shortGrade("10 Black Label")).toBe("10 Black Label");
+    expect(shortGrade("Authentic")).toBe("Authentic");
+  });
+
+  it("matches a dated price column but never a lone word by prefix", () => {
+    const m = detectMapping(["Name", "Price Override", "Market Price (As of 2027-01-02)"]);
+    expect(m.market).toBe(2);
+    expect(m.priceOverride).toBe(1);
+  });
+
   it("splitGrade", () => {
+    expect(splitGrade("", "PSA 10.0 GEM - MT")).toEqual({ grader: "PSA", grade: "10" });
     expect(splitGrade("", "PSA 10")).toEqual({ grader: "PSA", grade: "10" });
     expect(splitGrade("", "cgc 9.5")).toEqual({ grader: "CGC", grade: "9.5" });
     expect(splitGrade("bgs", "9.5")).toEqual({ grader: "BGS", grade: "9.5" });

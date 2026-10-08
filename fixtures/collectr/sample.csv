@@ -1,9 +1,10 @@
-Portfolio Name,Category,Set,Product Name,Card Number,Rarity,Variance,Grade,Card Condition,Average Cost Paid,Quantity,Market Price,Price Override,Watchlist,Date Added,Notes
-Show Stock,Pokemon,Evolving Skies,Umbreon VMAX (Alternate Full Art),215/203,Secret Rare,Holofoil,Ungraded,Near Mint,$900.00,1,"$1,412.37",,false,2026-05-01,
-Show Stock,Pokemon,Obsidian Flames,Charizard ex,223/197,Special Illustration Rare,Holofoil,Ungraded,Lightly Played,$60.00,2,$71.20,,false,2026-05-02,
-Show Stock,Pokemon,Crown Zenith,Pikachu,160/159,Secret Rare,Holofoil,PSA 10,,$150,1,$310.00,,false,2026-05-03,cert 12345678
-Show Stock,Pokemon,Paldean Fates,Paldean Fates Booster Bundle,,,,Ungraded,,$25.99,3,$41.10,,false,2026-05-04,
-Show Stock,Pokemon,Scarlet & Violet 151,Flabébé,,Common,Normal,Ungraded,Near Mint,,4,$0.12,,false,2026-05-05,
-Personal,Pokemon,Base Set,Charizard,4/102,Holo Rare,Unlimited,Ungraded,Moderately Played,$300,1,$410.00,,true,2026-05-06,
+Portfolio Name,Category,Set,Product Name,Card Number,Rarity,Variance,Grade,Card Condition,Average Cost Paid,Quantity,Market Price (As of 2026-10-08),Price Override,Watchlist,Date Added,Notes
+Show Stock,Pokemon,Evolving Skies,Umbreon VMAX (Alternate Full Art),215/203,Secret Rare,Holofoil,Ungraded,Near Mint,900.0000,1,"1,412.37",0,false,2026-05-01,
+Show Stock,Pokemon,Obsidian Flames,Charizard ex,223/197,Special Illustration Rare,Holofoil,Ungraded,Lightly Played,60.0000,2,71.20,0,false,2026-05-02,
+Show Stock,Pokemon,Crown Zenith,Pikachu,160/159,Secret Rare,Holofoil,PSA 10.0 GEM - MT,Near Mint,150.0000,1,310.00,0,false,2026-05-03,
+Show Stock,Pokemon,Paldean Fates,Paldean Fates Booster Bundle,,,,Ungraded,Near Mint,25.9900,3,41.10,0,false,2026-05-04,
+Show Stock,Pokemon,Scarlet & Violet 151,Flabébé,,Common,Normal,Ungraded,Near Mint,0.0000,4,0.12,0,false,2026-05-05,
+Personal,Pokemon,Base Set,Charizard,4/102,Holo Rare,Unlimited,Ungraded,Moderately Played,300.0000,1,410.00,0,true,2026-05-06,
 Show Stock,Pokemon,,,,,,,,,,,,,,
-Show Stock,Pokemon,Lost Origin,Giratina V (Alternate Full Art),186/196,Ultra Rare,Holofoil,Ungraded,Near Mint,$200,0,$650.00,,false,2026-05-07,
+Show Stock,Pokemon,Lost Origin,Giratina V (Alternate Full Art),186/196,Ultra Rare,Holofoil,Ungraded,Near Mint,200.0000,0,650.00,0,false,2026-05-07,
+Show Stock,One Piece,Romance Dawn,Monkey.D.Luffy (Alternate Art),OP01-003,Leader,Foil,CGC 10.0 Pristine,Near Mint,120.0000,1,"1,550.00","1,636.00",false,2026-05-08,

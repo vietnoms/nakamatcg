@@ -24,15 +24,15 @@ describe("import", () => {
   it("plans one unit per copy and applies it", async () => {
     const items = parse(csv);
     const plan = await planImport(db, items);
-    expect(plan).toMatchObject({ newProducts: 6, priceChanges: 0, newUnits: 1 + 2 + 1 + 3 + 4 + 1 });
+    expect(plan).toMatchObject({ newProducts: 7, priceChanges: 0, newUnits: 1 + 2 + 1 + 3 + 4 + 1 + 1 });
 
     const res = await applyImport(db, items, "sample.csv");
-    expect(res.newUnits).toBe(12);
+    expect(res.newUnits).toBe(13);
     const all = await db.select().from(units);
-    expect(all).toHaveLength(12);
-    expect(new Set(all.map((u) => u.code)).size).toBe(12);
+    expect(all).toHaveLength(13);
+    expect(new Set(all.map((u) => u.code)).size).toBe(13);
     expect(all.every((u) => u.status === "in_stock" && u.priceCents === null)).toBe(true);
-    expect((await db.select().from(priceHistory)).length).toBe(6);
+    expect((await db.select().from(priceHistory)).length).toBe(7);
   });
 
   it("re-importing the same file changes nothing", async () => {
@@ -42,8 +42,8 @@ describe("import", () => {
 
   it("a re-import updates prices and adds only extra copies", async () => {
     const bumped = csv
-      .replace("$71.20", "$80.00")
-      .replace("Lightly Played,$60.00,2,", "Lightly Played,$60.00,3,");
+      .replace(",71.20,", ",80.00,")
+      .replace("Lightly Played,60.0000,2,", "Lightly Played,60.0000,3,");
     const res = await applyImport(db, parse(bumped), "bumped.csv");
     expect(res).toMatchObject({ newProducts: 0, priceChanges: 1, newUnits: 1 });
     const [zard] = await db.select().from(products).where(eq(products.name, "Charizard ex"));
@@ -56,7 +56,7 @@ describe("import", () => {
     const [zard] = await db.select().from(products).where(eq(products.name, "Charizard ex"));
     const [one] = await db.select().from(units).where(eq(units.productId, zard!.id)).limit(1);
     await db.update(units).set({ status: "sold" }).where(eq(units.id, one!.id));
-    const plan = await planImport(db, parse(csv.replace("Lightly Played,$60.00,2,", "Lightly Played,$60.00,3,")));
+    const plan = await planImport(db, parse(csv.replace("Lightly Played,60.0000,2,", "Lightly Played,60.0000,3,")));
     expect(plan.newUnits).toBe(0);
   });
 });
