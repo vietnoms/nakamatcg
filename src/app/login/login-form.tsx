@@ -18,7 +18,7 @@ export function LoginForm({ next }: { next: string }) {
         required
         className="py-2.5 text-base"
       />
-      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
+      {state?.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <Button type="submit" disabled={pending} className="py-2.5 text-base">
         {pending ? "Signing in..." : "Sign in"}
       </Button>

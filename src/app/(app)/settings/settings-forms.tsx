@@ -18,7 +18,7 @@ function useSaver() {
     });
   }
   const note = (key: string) =>
-    msg?.key === key ? <span className={`text-sm ${msg.ok ? "text-green-300" : "text-red-400"}`}>{msg.text}</span> : null;
+    msg?.key === key ? <span className={`text-sm ${msg.ok ? "text-green-700 dark:text-green-300" : "text-red-600 dark:text-red-400"}`}>{msg.text}</span> : null;
   return { save, pending, note };
 }
 
@@ -38,7 +38,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card title="Suggested prices">
         <div className="space-y-3 text-sm">
-          <p className="text-xs text-zinc-400">What the Pricing page fills in when you press Enter on an empty box. Each price range rounds to its step: with "up", $12.10 becomes $13. You can always type your own price.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">What the Pricing page fills in when you press Enter on an empty box. Each price range rounds to its step: with "up", $12.10 becomes $13. You can always type your own price.</p>
           <label className="flex items-center gap-2">
             <Input
               type="number"
@@ -57,7 +57,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
             <tbody>
               {pricing.tiers.map((t, i) => (
                 <tr key={i}>
-                  <td className="pr-2 text-zinc-400">{t.belowCents === null ? "Everything above" : "Below $"}</td>
+                  <td className="pr-2 text-zinc-500 dark:text-zinc-400">{t.belowCents === null ? "Everything above" : "Below $"}</td>
                   <td className="pr-2">
                     {t.belowCents !== null && (
                       <Input
@@ -71,7 +71,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
                       />
                     )}
                   </td>
-                  <td className="pr-2 text-zinc-400">step $</td>
+                  <td className="pr-2 text-zinc-500 dark:text-zinc-400">step $</td>
                   <td>
                     <Input
                       value={dollars(t.stepCents)}
@@ -95,7 +95,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
               className="w-20 text-right"
             />
           </label>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Examples:{" "}
             {examples.map((c) => `${formatCents(c)} -> ${formatCents(suggestPrice(c, pricing) ?? 0)}`).join(", ")}
           </p>
@@ -110,7 +110,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Stickers">
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <p className="col-span-2 text-xs text-zinc-400">
+          <p className="col-span-2 text-xs text-zinc-500 dark:text-zinc-400">
             Match the roll in the printer. DPI is on the sticker under the Zebra (203 for most desktop models). Faint print: raise
             darkness. Text cut off on one side: shift it the other way.
           </p>
@@ -150,7 +150,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
             Darkness
             <Input type="number" value={label.darkness} onChange={(e) => setLabel({ ...label, darkness: Number(e.target.value) })} className="w-20 text-right" />
           </label>
-          <span className="text-xs text-zinc-400">-30 lighter to 30 darker, 0 = printer default</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">-30 lighter to 30 darker, 0 = printer default</span>
           <label className="flex items-center gap-2">
             Shift right
             <Input type="number" value={label.offsetXDots} onChange={(e) => setLabel({ ...label, offsetXDots: Number(e.target.value) })} className="w-20 text-right" />
@@ -159,7 +159,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
             Shift down
             <Input type="number" value={label.offsetYDots} onChange={(e) => setLabel({ ...label, offsetYDots: Number(e.target.value) })} className="w-20 text-right" />
           </label>
-          <p className="col-span-2 text-xs text-zinc-400">Shifts are in printer dots (203 per inch). Print a test sticker after changing anything.</p>
+          <p className="col-span-2 text-xs text-zinc-500 dark:text-zinc-400">Shifts are in printer dots (203 per inch). Print a test sticker after changing anything.</p>
           <div className="col-span-2 flex items-center gap-3">
             <Button disabled={pending} onClick={() => save("label", label)}>
               Save
@@ -171,7 +171,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Payment methods">
         <div className="space-y-2 text-sm">
-          <p className="text-xs text-zinc-400">The buttons on the POS, in this order (the last one you used is preselected on each phone). The fee is only used to work out profit on the Sales page; nothing here moves money.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">The buttons on the POS, in this order (the last one you used is preselected on each phone). The fee is only used to work out profit on the Sales page; nothing here moves money.</p>
           {methods.map((m, i) => (
             <div key={m.id} className="flex items-center gap-2">
               <Input
@@ -179,7 +179,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
                 onChange={(e) => setMethods(methods.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                 className="w-36"
               />
-              <span className="text-zinc-400">fee</span>
+              <span className="text-zinc-500 dark:text-zinc-400">fee</span>
               <Input
                 type="number"
                 step="0.1"
@@ -187,7 +187,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
                 onChange={(e) => setMethods(methods.map((x, j) => (j === i ? { ...x, feePercent: Number(e.target.value) } : x)))}
                 className="w-20 text-right"
               />
-              <span className="text-zinc-400">%</span>
+              <span className="text-zinc-500 dark:text-zinc-400">%</span>
               <Button variant="ghost" onClick={() => setMethods(methods.filter((_, j) => j !== i))} disabled={methods.length <= 1}>
                 Remove
               </Button>
@@ -216,7 +216,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Trades and re-stickering">
         <div className="space-y-3 text-sm">
-          <p className="text-xs text-zinc-400">Trade-in value is the starting credit for a customer's card on the POS Trade tab (you can change it per card). It also becomes that card's cost for gain and loss.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Trade-in value is the starting credit for a customer's card on the POS Trade tab (you can change it per card). It also becomes that card's cost for gain and loss.</p>
           <label className="flex items-center gap-2">
             Trade-in value
             <Input type="number" value={tradeIn} onChange={(e) => setTradeIn(Number(e.target.value))} className="w-20 text-right" />% of market
@@ -227,7 +227,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
             </Button>
             {note("tradeInPercent")}
           </div>
-          <label className="flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-3">
+          <label className="flex flex-wrap items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 pt-3">
             A sticker is out of date when the suggested price moved at least
             <Input type="number" value={restick.percent} onChange={(e) => setRestick({ ...restick, percent: Number(e.target.value) })} className="w-16 text-right" />
             % and at least $

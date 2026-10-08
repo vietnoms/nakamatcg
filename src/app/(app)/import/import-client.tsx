@@ -114,11 +114,11 @@ export function ImportClient() {
           void onFile(e.dataTransfer.files?.[0]);
         }}
         className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center ${
-          dragging ? "border-sky-500 bg-sky-950/40" : "border-zinc-700 bg-zinc-900 hover:border-zinc-500"
+          dragging ? "border-sky-500 bg-sky-50 dark:bg-sky-950/40" : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-500"
         }`}
       >
         <span className="text-sm font-medium">{file ? file.name : "Drop your Collectr CSV here, or click to choose it"}</span>
-        <span className="text-xs text-zinc-400">
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
           {parsed ? `${parsed.rows.length} rows, ${parsed.headers.length} columns. Drop another file to replace it.` : "Nothing is saved until you press Import."}
         </span>
         <input type="file" accept=".csv,text/csv" onChange={(e) => void onFile(e.target.files?.[0])} className="sr-only" />
@@ -136,7 +136,7 @@ export function ImportClient() {
                     <label
                       key={name}
                       className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
-                        on ? "border-zinc-100 bg-zinc-100 text-zinc-950" : "border-zinc-700 bg-zinc-900 text-zinc-400 line-through"
+                        on ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950" : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 line-through"
                       }`}
                     >
                       <input
@@ -148,19 +148,19 @@ export function ImportClient() {
                           choosePortfolios(on ? current.filter((p) => p !== name) : [...current, name]);
                         }}
                       />
-                      {name || "(no portfolio)"} <span className={on ? "text-zinc-700" : "text-zinc-500"}>{n}</span>
+                      {name || "(no portfolio)"} <span className={on ? "text-zinc-300 dark:text-zinc-700" : "text-zinc-400 dark:text-zinc-500"}>{n}</span>
                     </label>
                   );
                 })}
               </div>
-              <p className="mt-1.5 text-xs text-zinc-400">Tap to leave a portfolio out. Remembered for your next import.</p>
+              <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">Tap to leave a portfolio out. Remembered for your next import.</p>
             </div>
           )}
 
           <details open={missingColumns} className="text-sm">
-            <summary className="cursor-pointer select-none text-zinc-400">
+            <summary className="cursor-pointer select-none text-zinc-500 dark:text-zinc-400">
               {missingColumns ? (
-                <span className="font-medium text-amber-300">Pick the columns marked below</span>
+                <span className="font-medium text-amber-700 dark:text-amber-300">Pick the columns marked below</span>
               ) : (
                 <span>Columns matched automatically (name, set, number, quantity, price, cost, grade). Check or change</span>
               )}
@@ -168,9 +168,9 @@ export function ImportClient() {
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {FIELDS.map((f: Field) => (
                 <label key={f} className="flex items-center justify-between gap-2">
-                  <span className={f === "name" || f === "market" ? "font-medium" : "text-zinc-400"}>
+                  <span className={f === "name" || f === "market" ? "font-medium" : "text-zinc-500 dark:text-zinc-400"}>
                     {FIELD_LABELS[f]}
-                    {(f === "name" || f === "market") && mapping[f] === null && <span className="text-amber-300"> (needed)</span>}
+                    {(f === "name" || f === "market") && mapping[f] === null && <span className="text-amber-700 dark:text-amber-300"> (needed)</span>}
                   </span>
                   <Select
                     value={mapping[f] ?? ""}
@@ -196,12 +196,12 @@ export function ImportClient() {
             <Button onClick={runPreview} disabled={pending || mapping.name === null}>
               {pending && !preview ? "Checking..." : "Preview"}
             </Button>
-            <span className="text-xs text-zinc-400">Shows what would change. Nothing is saved yet.</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Shows what would change. Nothing is saved yet.</span>
           </div>
         </Card>
       )}
 
-      {error && <p className="rounded-md bg-red-950/40 p-3 text-sm text-red-300">{error}</p>}
+      {error && <p className="rounded-md bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
 
       {preview && (
         <Card title="Preview">
@@ -216,14 +216,14 @@ export function ImportClient() {
               <b>{preview.priceChanges}</b> market price changes
             </span>
             {preview.skipped.length > 0 && (
-              <span className="text-amber-300">
+              <span className="text-amber-700 dark:text-amber-300">
                 <b>{preview.skipped.length}</b> rows skipped
               </span>
             )}
           </div>
-          <div className="max-h-96 overflow-auto rounded border border-zinc-800">
+          <div className="max-h-96 overflow-auto rounded border border-zinc-200 dark:border-zinc-800">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-zinc-950 text-left text-xs text-zinc-400">
+              <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950 text-left text-xs text-zinc-500 dark:text-zinc-400">
                 <tr>
                   <th className="p-2">Card</th>
                   <th className="p-2">Set</th>
@@ -234,18 +234,18 @@ export function ImportClient() {
               </thead>
               <tbody>
                 {preview.rows.map((r) => (
-                  <tr key={r.key} className="border-t border-zinc-800">
+                  <tr key={r.key} className="border-t border-zinc-200 dark:border-zinc-800">
                     <td className="p-2">
                       {r.name} {r.badge && <Badge>{r.badge}</Badge>} {r.isNewProduct && <Badge tone="blue">new</Badge>}
                     </td>
-                    <td className="p-2 text-zinc-400">
+                    <td className="p-2 text-zinc-500 dark:text-zinc-400">
                       {r.setName} {r.cardNumber && `#${r.cardNumber}`}
                     </td>
                     <td className="p-2 text-right tabular-nums">{r.quantityInFile}</td>
                     <td className="p-2 text-right tabular-nums">{r.newUnits || ""}</td>
                     <td className="p-2 text-right tabular-nums">
                       {!r.isNewProduct && r.oldMarketCents !== r.newMarketCents && r.oldMarketCents !== null && (
-                        <span className="mr-1 text-zinc-500 line-through">{formatCents(r.oldMarketCents)}</span>
+                        <span className="mr-1 text-zinc-400 dark:text-zinc-500 line-through">{formatCents(r.oldMarketCents)}</span>
                       )}
                       {r.newMarketCents === null ? "-" : formatCents(r.newMarketCents)}
                     </td>
@@ -256,8 +256,8 @@ export function ImportClient() {
           </div>
           {preview.skipped.length > 0 && (
             <details className="mt-3 text-sm">
-              <summary className="cursor-pointer text-amber-300">Skipped rows</summary>
-              <ul className="mt-1 list-disc pl-5 text-zinc-400">
+              <summary className="cursor-pointer text-amber-700 dark:text-amber-300">Skipped rows</summary>
+              <ul className="mt-1 list-disc pl-5 text-zinc-500 dark:text-zinc-400">
                 {preview.skipped.map((s) => (
                   <li key={s.line}>
                     Row {s.line}: {s.reason} {s.name && `(${s.name})`}

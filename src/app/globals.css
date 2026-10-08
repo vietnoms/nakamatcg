@@ -1,12 +1,18 @@
 @import "tailwindcss";
 
+/* dark: classes follow the theme picked with the toggle (src/components/theme.tsx), not the OS */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* native controls (selects, checkboxes, date pickers, scrollbars) follow the theme */
 :root {
-  /* dark only: native controls (selects, checkboxes, date pickers, scrollbars) follow */
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 antialiased;
+  @apply bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
 }
 
 input[type="number"]::-webkit-inner-spin-button,

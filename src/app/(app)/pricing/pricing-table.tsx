@@ -143,20 +143,20 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
         </Button>
       </div>
       <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-800">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
           <div
             className="h-full rounded-full bg-green-600 transition-all"
             style={{ width: `${totals.copies ? Math.round(((totals.copies - totals.unpriced) * 100) / totals.copies) : 0}%` }}
           />
         </div>
-        <span className="shrink-0 text-sm tabular-nums text-zinc-400">
+        <span className="shrink-0 text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
           {totals.copies - totals.unpriced} of {totals.copies} copies priced
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900">
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-950 text-left text-xs text-zinc-400">
+          <thead className="bg-zinc-50 dark:bg-zinc-950 text-left text-xs text-zinc-500 dark:text-zinc-400">
             <tr>
               <th className="p-2">Card</th>
               <th className="p-2 text-right">Qty</th>
@@ -173,32 +173,32 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
               const state = saving[r.productId];
               const badge = badgeFor(r);
               return (
-                <tr key={r.productId} className="border-t border-zinc-800 align-middle">
+                <tr key={r.productId} className="border-t border-zinc-200 dark:border-zinc-800 align-middle">
                   <td className="p-2">
                     <div className="font-medium">
                       {r.name} {badge && <Badge tone={r.kind === "slab" ? "blue" : "zinc"}>{badge}</Badge>}
                     </div>
-                    <div className="text-xs text-zinc-400">
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
                       {[r.setName, r.cardNumber && `#${r.cardNumber}`, r.variant].filter(Boolean).join(" · ")}
                     </div>
                   </td>
                   <td className="p-2 text-right tabular-nums">{r.inStock}</td>
-                  <td className="p-2 text-right tabular-nums text-zinc-400">{r.avgCostCents === null ? "" : formatCents(r.avgCostCents)}</td>
+                  <td className="p-2 text-right tabular-nums text-zinc-500 dark:text-zinc-400">{r.avgCostCents === null ? "" : formatCents(r.avgCostCents)}</td>
                   <td className="p-2 text-right tabular-nums">{r.marketCents === null ? "-" : formatCents(r.marketCents)}</td>
-                  <td className="p-2 text-right tabular-nums text-zinc-400">{suggested === null ? "-" : formatCents(suggested)}</td>
+                  <td className="p-2 text-right tabular-nums text-zinc-500 dark:text-zinc-400">{suggested === null ? "-" : formatCents(suggested)}</td>
                   <td className="p-2 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {state === "saving" && <span className="text-xs text-zinc-500">...</span>}
-                      {state === "error" && <span className="text-xs text-red-400">!</span>}
-                      <span className="text-zinc-500">$</span>
+                      {state === "saving" && <span className="text-xs text-zinc-400 dark:text-zinc-500">...</span>}
+                      {state === "error" && <span className="text-xs text-red-600 dark:text-red-400">!</span>}
+                      <span className="text-zinc-400 dark:text-zinc-500">$</span>
                       <input
                         ref={(el) => {
                           if (el) inputs.current.set(r.productId, el);
                           else inputs.current.delete(r.productId);
                         }}
                         inputMode="decimal"
-                        className={`w-24 rounded-md border px-2 py-1 text-right tabular-nums outline-none focus:border-zinc-100 focus:ring-2 focus:ring-zinc-100/10 ${
-                          state === "error" ? "border-red-500" : "border-zinc-700"
+                        className={`w-24 rounded-md border px-2 py-1 text-right tabular-nums outline-none focus:border-zinc-900 dark:focus:border-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 ${
+                          state === "error" ? "border-red-500" : "border-zinc-300 dark:border-zinc-700"
                         }`}
                         placeholder={r.mixedPrices ? "mixed" : dollars(suggested)}
                         value={drafts[r.productId] ?? dollars(r.priceCents)}
@@ -228,7 +228,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
                       />
                     </div>
                     {r.priceCents !== null && r.marketCents ? (
-                      <div className={`mt-0.5 text-xs tabular-nums ${Math.abs(r.priceCents / r.marketCents - 1) > 0.5 ? "font-medium text-amber-300" : "text-zinc-500"}`}>
+                      <div className={`mt-0.5 text-xs tabular-nums ${Math.abs(r.priceCents / r.marketCents - 1) > 0.5 ? "font-medium text-amber-700 dark:text-amber-300" : "text-zinc-400 dark:text-zinc-500"}`}>
                         {Math.round((r.priceCents * 100) / r.marketCents)}% of market
                       </div>
                     ) : null}
@@ -238,7 +238,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
             })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-zinc-400">
+                <td colSpan={6} className="p-6 text-center text-zinc-500 dark:text-zinc-400">
                   {rows.length === 0 ? "Nothing in stock yet. Import a Collectr CSV first." : "Nothing matches this filter."}
                 </td>
               </tr>

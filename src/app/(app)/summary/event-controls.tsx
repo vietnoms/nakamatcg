@@ -48,7 +48,7 @@ export function EventControls({ events, activeId, currentId }: { events: Ev[]; a
       </Button>
       {open && (
         <form
-          className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 p-3"
+          className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3"
           onSubmit={(e) => {
             e.preventDefault();
             start(async () => {
@@ -65,7 +65,7 @@ export function EventControls({ events, activeId, currentId }: { events: Ev[]; a
         >
           <Input required placeholder="Show name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-48" />
           <Input type="date" value={form.startsOn} onChange={(e) => setForm({ ...form, startsOn: e.target.value })} />
-          <span className="text-sm text-zinc-400">to</span>
+          <span className="text-sm text-zinc-500 dark:text-zinc-400">to</span>
           <Input type="date" value={form.endsOn} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} />
           <Input placeholder="Starting cash $" value={form.cash} onChange={(e) => setForm({ ...form, cash: e.target.value })} className="w-36" />
           <Button type="submit" disabled={pending}>

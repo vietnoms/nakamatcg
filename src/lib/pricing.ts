@@ -67,7 +67,13 @@ export function clampOfferPercent(percent: number): number {
   return Math.min(OFFER_MAX_PERCENT, Math.max(OFFER_MIN_PERCENT, Math.round(percent)));
 }
 
-/** What to pay (or credit) for a card coming in: a percent of market, rounded down on the rule's steps. */
+/**
+ * What to pay (or credit) for a card coming in: a percent of market, rounded down on the rule's
+ * steps. Under $1 it keeps its cents instead of rounding to $0 (Viet, 2026-10-08): a stack of
+ * cheap cards adds up to real money.
+ */
 export function offerPrice(marketCents: number, percent: number, rule: PricingRule): number {
-  return roundPrice(Math.round((marketCents * percent) / 100), { ...rule, mode: "down", minCents: 0 });
+  const exact = Math.round((marketCents * percent) / 100);
+  if (exact < 100) return exact;
+  return roundPrice(exact, { ...rule, mode: "down", minCents: 0 });
 }
