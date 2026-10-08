@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { extractCode } from "@/lib/codes";
 import { posDb } from "./db";
 import { Scanner, beep } from "./scanner";
@@ -14,49 +14,106 @@ export type AddResult = "added" | "invalid" | "unknown" | "unavailable" | "dupli
 
 const STATUS_TEXT: Record<string, string> = { sold: "already SOLD", traded_out: "already TRADED", removed: "removed from stock" };
 
-/** The cards leaving the table: add by scanning, typing a code, or searching a name. */
-export function useCart() {
+/**
+ * The cards leaving the table: add by scanning, typing a code, or searching a name. With a
+ * storage key the cart is kept on the phone (ids only; each card is re-read from the inventory
+ * on load, so a card sold meanwhile drops out) and shared between tabs.
+ */
+export function useCart(storageKey?: string) {
   const [lines, setLinesState] = useState<PosUnit[]>([]);
   const [flash, setFlash] = useState<Flash>(null);
   // the scanner calls add() from a timer: read the cart from a ref, not a stale render
   const linesRef = useRef<PosUnit[]>([]);
-  const setLines = useCallback((next: (ls: PosUnit[]) => PosUnit[]) => {
-    linesRef.current = next(linesRef.current);
-    setLinesState(linesRef.current);
-  }, []);
+  // adds wait for the saved cart to load, so a scan that opened the POS lands in the same cart
+  const ready = useRef<{ promise: Promise<void>; resolve: () => void } | null>(null);
+  if (ready.current === null) {
+    let resolve = () => {};
+    const promise = new Promise<void>((r) => (resolve = r));
+    ready.current = { promise, resolve };
+  }
 
-  const add = useCallback(async (raw: string): Promise<AddResult> => {
-    const code = extractCode(raw);
-    if (!code) {
-      beep(false);
-      setFlash({ tone: "error", text: "Not one of our stickers" });
-      return "invalid";
-    }
-    const u = await posDb().units.where("code").equals(code).first();
-    if (!u) {
-      beep(false);
-      setFlash({ tone: "error", text: `${code} is not in this phone's inventory. Sync, or search by name.` });
-      return "unknown";
-    }
-    if (u.status !== "in_stock") {
-      beep(false);
-      setFlash({ tone: "error", text: `${u.name} (${code}) is ${STATUS_TEXT[u.status] ?? u.status}` });
-      return "unavailable";
-    }
-    if (linesRef.current.some((l) => l.id === u.id)) {
-      setFlash({ tone: "warn", text: `${u.name} is already in the cart` });
-      return "duplicate";
-    }
-    setLines((ls) => [...ls, u]);
-    beep(true);
-    setFlash({ tone: "ok", text: `${u.name} ${u.priceCents === null ? "(no price)" : money(u.priceCents)}` });
-    return "added";
-  }, [setLines]);
+  const setLines = useCallback(
+    (next: (ls: PosUnit[]) => PosUnit[]) => {
+      linesRef.current = next(linesRef.current);
+      setLinesState(linesRef.current);
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(linesRef.current.map((l) => l.id)));
+        } catch {
+          // storage blocked: the cart still works on this page
+        }
+      }
+    },
+    [storageKey],
+  );
 
-  const addUnit = useCallback((u: PosUnit) => {
-    setLines((ls) => (ls.some((l) => l.id === u.id) ? ls : [...ls, u]));
-    setFlash({ tone: "ok", text: `${u.name} added` });
-  }, [setLines]);
+  useEffect(() => {
+    if (!storageKey) {
+      ready.current?.resolve();
+      return;
+    }
+    const restore = async () => {
+      let ids: string[] = [];
+      try {
+        ids = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
+      } catch {
+        ids = [];
+      }
+      const found = await posDb().units.bulkGet(ids);
+      const keep = found.filter((u): u is PosUnit => Boolean(u) && u!.status === "in_stock");
+      linesRef.current = keep;
+      setLinesState(keep);
+      if (keep.length < ids.length) {
+        setFlash({ tone: "warn", text: `${ids.length - keep.length} card(s) left the cart: sold or no longer in stock` });
+      }
+    };
+    void restore().finally(() => ready.current?.resolve());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === storageKey) void restore();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [storageKey]);
+
+  const add = useCallback(
+    async (raw: string): Promise<AddResult> => {
+      await ready.current?.promise;
+      const code = extractCode(raw);
+      if (!code) {
+        beep(false);
+        setFlash({ tone: "error", text: "Not one of our stickers" });
+        return "invalid";
+      }
+      const u = await posDb().units.where("code").equals(code).first();
+      if (!u) {
+        beep(false);
+        setFlash({ tone: "error", text: `${code} is not in this phone's inventory. Sync, or search by name.` });
+        return "unknown";
+      }
+      if (u.status !== "in_stock") {
+        beep(false);
+        setFlash({ tone: "error", text: `${u.name} (${code}) is ${STATUS_TEXT[u.status] ?? u.status}` });
+        return "unavailable";
+      }
+      if (linesRef.current.some((l) => l.id === u.id)) {
+        setFlash({ tone: "warn", text: `${u.name} is already in the cart` });
+        return "duplicate";
+      }
+      setLines((ls) => [...ls, u]);
+      beep(true);
+      setFlash({ tone: "ok", text: `Added ${u.name} ${u.priceCents === null ? "(no price)" : money(u.priceCents)}` });
+      return "added";
+    },
+    [setLines],
+  );
+
+  const addUnit = useCallback(
+    (u: PosUnit) => {
+      setLines((ls) => (ls.some((l) => l.id === u.id) ? ls : [...ls, u]));
+      setFlash({ tone: "ok", text: `Added ${u.name}` });
+    },
+    [setLines],
+  );
 
   const remove = (id: string) => setLines((ls) => ls.filter((l) => l.id !== id));
   const clear = () => {

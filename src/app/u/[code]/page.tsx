@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui";
 import { getDb } from "@/db/client";
 import { badgeFor } from "@/import/collectr";
@@ -17,11 +17,19 @@ const STATUS: Record<string, { label: string; tone: "green" | "red" | "zinc" | "
 };
 
 /** Where a sticker's QR code leads when scanned with the phone's own camera app. */
-export default async function UnitPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function UnitPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<{ view?: string }>;
+}) {
   const code = normalizeCode((await params).code);
   if (!code) notFound();
   const u = await unitByCode(getDb(), code);
   if (!u) notFound();
+  // scanned with the phone's camera app: put the card straight into the POS cart (?view=1 shows this page instead)
+  if (u.status === "in_stock" && (await searchParams).view !== "1") redirect(`/pos?add=${u.code}`);
   const status = STATUS[u.status] ?? { label: u.status, tone: "zinc" as const };
   const badge = badgeFor(u);
 

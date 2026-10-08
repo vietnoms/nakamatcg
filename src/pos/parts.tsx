@@ -8,6 +8,7 @@ import type { ProductInput } from "@/lib/ops";
 import { roundPrice, suggestPrice, type PricingRule } from "@/lib/pricing";
 import type { PaymentMethod } from "@/lib/settings";
 import { posDb } from "./db";
+import { remember, remembered } from "./persist";
 import type { PosProduct, PosUnit } from "./types";
 
 export const money = formatCents;
@@ -85,13 +86,23 @@ export function PaymentBox({
   totalCents,
   onChange,
   label,
+  rememberKey,
 }: {
   methods: PaymentMethod[];
   totalCents: number;
   onChange: (p: { method: string; amountCents: number }[] | null) => void;
   label: string;
+  /** remembers the last method picked here, so the usual one is preselected next time */
+  rememberKey?: string;
 }) {
-  const [first, setFirst] = useState<string | null>(methods[0]?.id ?? null);
+  const [first, setFirstState] = useState<string | null>(() => {
+    const last = rememberKey ? remembered<string | null>(rememberKey, null) : null;
+    return last && methods.some((m) => m.id === last) ? last : (methods[0]?.id ?? null);
+  });
+  const setFirst = (id: string) => {
+    setFirstState(id);
+    if (rememberKey) remember(rememberKey, id);
+  };
   const [split, setSplit] = useState(false);
   const [second, setSecond] = useState<string | null>(methods[1]?.id ?? null);
   const [firstAmount, setFirstAmount] = useState<number | null>(null);
