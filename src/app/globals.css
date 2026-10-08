@@ -1,16 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  /* light only: phones are read under bright show-floor lights */
-  color-scheme: light;
+  /* dark only: native controls (selects, checkboxes, date pickers, scrollbars) follow */
+  color-scheme: dark;
 }
 
 body {
-  @apply bg-zinc-50 text-zinc-900 antialiased;
+  @apply bg-zinc-950 text-zinc-100 antialiased;
 }
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* paper stays black on white (the inventory list printout) */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  body,
+  body * {
+    background: transparent !important;
+    color: #000 !important;
+    border-color: #999 !important;
+  }
 }

@@ -35,7 +35,7 @@ export default async function LabelsPage() {
         </p>
       </Explainer>
       {!baseUrl && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded-md bg-red-950/40 p-3 text-sm text-red-300">
           PUBLIC_BASE_URL is not set. The QR codes need the app&apos;s public address before anything is printed.
         </p>
       )}

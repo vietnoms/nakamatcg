@@ -120,7 +120,7 @@ export function Scanner({ onScan, active }: { onScan: (text: string) => void; ac
         <button
           type="button"
           onClick={() => void toggleTorch()}
-          className={`absolute right-2 bottom-2 rounded-full px-3 py-1.5 text-xs font-semibold ${torch.on ? "bg-amber-300 text-zinc-900" : "bg-black/60 text-white"}`}
+          className={`absolute right-2 bottom-2 rounded-full px-3 py-1.5 text-xs font-semibold ${torch.on ? "bg-amber-700 text-zinc-100" : "bg-black/60 text-white"}`}
         >
           {torch.on ? "Light on" : "Light"}
         </button>

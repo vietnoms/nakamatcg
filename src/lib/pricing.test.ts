@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PRICING, needsRestick, roundPrice, suggestPrice, type PricingRule } from "./pricing";
+import { DEFAULT_PRICING, clampOfferPercent, needsRestick, offerPrice, roundPrice, suggestPrice, type PricingRule } from "./pricing";
 
 describe("roundPrice with the default tiers", () => {
   const r = (c: number) => roundPrice(c, DEFAULT_PRICING);
@@ -80,5 +80,26 @@ describe("needsRestick", () => {
   it("never flags a unit with no sticker price or no suggestion", () => {
     expect(needsRestick(null, 5000, t)).toBe(false);
     expect(needsRestick(5000, null, t)).toBe(false);
+  });
+});
+
+describe("offers for cards coming in", () => {
+  it("pays a percent of market, rounded down on the rule's steps", () => {
+    expect(offerPrice(1000, 70, DEFAULT_PRICING)).toBe(700);
+    expect(offerPrice(1250, 70, DEFAULT_PRICING)).toBe(800);
+    expect(offerPrice(10000, 85, DEFAULT_PRICING)).toBe(8500);
+    expect(offerPrice(10000, 83, DEFAULT_PRICING)).toBe(8000);
+    expect(offerPrice(4000, 100, DEFAULT_PRICING)).toBe(4000);
+  });
+
+  it("can offer nothing for a card worth less than a step", () => {
+    expect(offerPrice(80, 70, DEFAULT_PRICING)).toBe(0);
+  });
+
+  it("keeps the slider between 60 and 100 percent", () => {
+    expect(clampOfferPercent(50)).toBe(60);
+    expect(clampOfferPercent(120)).toBe(100);
+    expect(clampOfferPercent(72.4)).toBe(72);
+    expect(clampOfferPercent(Number.NaN)).toBe(60);
   });
 });

@@ -36,32 +36,32 @@ export default async function UnitPage({
   return (
     <main className="mx-auto max-w-md space-y-4 px-4 py-6">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-sm text-zinc-500">{u.code}</span>
+        <span className="font-mono text-sm text-zinc-400">{u.code}</span>
         <Badge tone={status.tone}>{status.label}</Badge>
       </div>
       <div>
         <h1 className="text-2xl font-semibold">{u.name}</h1>
-        <p className="text-zinc-500">
+        <p className="text-zinc-400">
           {[u.setName, u.cardNumber && `#${u.cardNumber}`, u.variant].filter(Boolean).join(" · ")} {badge && <Badge>{badge}</Badge>}
         </p>
-        {u.cert && <p className="text-sm text-zinc-500">Cert {u.cert}</p>}
+        {u.cert && <p className="text-sm text-zinc-400">Cert {u.cert}</p>}
       </div>
       <dl className="grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-          <dt className="text-xs text-zinc-500">Price</dt>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+          <dt className="text-xs text-zinc-400">Price</dt>
           <dd className="text-2xl font-semibold">{u.priceCents === null ? "-" : formatCents(u.priceCents)}</dd>
           {u.stickeredPriceCents !== null && u.stickeredPriceCents !== u.priceCents && (
-            <dd className="text-xs text-amber-700">Sticker says {formatCents(u.stickeredPriceCents)}</dd>
+            <dd className="text-xs text-amber-300">Sticker says {formatCents(u.stickeredPriceCents)}</dd>
           )}
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-          <dt className="text-xs text-zinc-500">Market</dt>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+          <dt className="text-xs text-zinc-400">Market</dt>
           <dd className="text-2xl font-semibold">{u.marketCents === null ? "-" : formatCents(u.marketCents)}</dd>
-          {u.costCents !== null && <dd className="text-xs text-zinc-500">Cost {formatCents(u.costCents)}</dd>}
+          {u.costCents !== null && <dd className="text-xs text-zinc-400">Cost {formatCents(u.costCents)}</dd>}
         </div>
       </dl>
       {u.status === "in_stock" && (
-        <Link href={`/pos?add=${u.code}`} className="block rounded-md bg-zinc-900 py-3 text-center font-medium text-white">
+        <Link href={`/pos?add=${u.code}`} className="block rounded-md bg-zinc-100 py-3 text-center font-medium text-zinc-950">
           Sell in POS
         </Link>
       )}

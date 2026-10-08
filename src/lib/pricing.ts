@@ -57,3 +57,17 @@ export function needsRestick(
   const diff = Math.abs(suggestedCents - stickerCents);
   return diff >= t.minCents && diff * 100 >= stickerCents * t.percent;
 }
+
+/** The range of the phone's offer slider for cards coming in (buys and trade-ins), in percent of market. */
+export const OFFER_MIN_PERCENT = 60;
+export const OFFER_MAX_PERCENT = 100;
+
+export function clampOfferPercent(percent: number): number {
+  if (!Number.isFinite(percent)) return OFFER_MIN_PERCENT;
+  return Math.min(OFFER_MAX_PERCENT, Math.max(OFFER_MIN_PERCENT, Math.round(percent)));
+}
+
+/** What to pay (or credit) for a card coming in: a percent of market, rounded down on the rule's steps. */
+export function offerPrice(marketCents: number, percent: number, rule: PricingRule): number {
+  return roundPrice(Math.round((marketCents * percent) / 100), { ...rule, mode: "down", minCents: 0 });
+}

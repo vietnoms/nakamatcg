@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Nakama Cards",
   description: "Inventory, price stickers, and show sales",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Nakama POS", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Nakama POS", statusBarStyle: "black" },
   icons: { icon: "/icons/icon.svg", apple: "/icons/apple-touch-icon.png" },
   robots: { index: false, follow: false },
 };
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#18181b",
+  themeColor: "#09090b",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
