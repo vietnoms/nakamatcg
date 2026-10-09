@@ -1,8 +1,9 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { products, units } from "@/db/schema";
 import { badgeFor, type ProductKind } from "@/import/collectr";
 import { formatCents } from "@/lib/money";
+import { forSale } from "@/server/groups";
 import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function PrintInventory() {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(eq(units.status, "in_stock"))
+    .where(and(eq(units.status, "in_stock"), forSale))
     .orderBy(asc(units.code));
 
   return (

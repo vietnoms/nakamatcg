@@ -7,7 +7,7 @@ import { bpsToPercent, percentToBps } from "@/lib/consignment";
 import { parseDollars } from "@/lib/money";
 import { createGroupAction, deleteGroupAction, updateGroupAction } from "./actions";
 
-type Value = { name: string; kind: "own" | "consignment"; feeBps: number | null; minFeeCents: number | null; note: string };
+type Value = { name: string; kind: "own" | "consignment" | "personal"; feeBps: number | null; minFeeCents: number | null; note: string };
 
 /** Make a group, or edit one (with its id). Consignment groups carry the fee terms. */
 export function GroupForm({ id, initial }: { id?: string; initial?: Value }) {
@@ -76,7 +76,8 @@ export function GroupForm({ id, initial }: { id?: string; initial?: Value }) {
         <div className="inline-flex rounded-md border border-zinc-300 p-0.5 dark:border-zinc-700">
           {(
             [
-              ["own", "Mine"],
+              ["own", "Mine, for sale"],
+              ["personal", "PC, not for sale"],
               ["consignment", "Consignment"],
             ] as const
           ).map(([k, label]) => (
@@ -103,6 +104,11 @@ export function GroupForm({ id, initial }: { id?: string; initial?: Value }) {
             per card
           </label>
         </div>
+      )}
+      {kind === "personal" && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Your personal collection: these cards stay off the Pricing page, the sticker queue and the POS. Move a card to another group to sell it.
+        </p>
       )}
       {kind === "consignment" && (
         <label className="flex items-center gap-2">

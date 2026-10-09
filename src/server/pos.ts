@@ -1,7 +1,7 @@
 import "server-only";
 import { desc, eq, gt, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { events, products, units } from "@/db/schema";
+import { events, products, unitGroups, units } from "@/db/schema";
 import { badgeFor, type ProductKind } from "@/import/collectr";
 import type { PosProduct, PosSnapshot, PosUnit, UnitStatus } from "@/pos/types";
 import { getSettings } from "./settings";
@@ -39,9 +39,11 @@ export async function posSnapshot(db: Db, since: Date | null): Promise<PosSnapsh
       grader: products.grader,
       grade: products.grade,
       marketCents: products.marketCents,
+      groupKind: unitGroups.kind,
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
+    .leftJoin(unitGroups, eq(unitGroups.id, units.groupId))
     .where(unitWhere);
 
   const prodRows = await db
@@ -58,7 +60,8 @@ export async function posSnapshot(db: Db, since: Date | null): Promise<PosSnapsh
       (r): PosUnit => ({
         id: r.id,
         code: r.code,
-        status: r.status as UnitStatus,
+        // a card in my personal collection is not for sale: the phone treats it as off the table
+        status: (r.status === "in_stock" && r.groupKind === "personal" ? "removed" : r.status) as UnitStatus,
         priceCents: r.priceCents,
         costCents: r.costCents,
         productId: r.productId,

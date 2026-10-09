@@ -91,3 +91,10 @@ are left out of gain and loss. My fee is a percentage (basis points) of each car
 deal, with an optional minimum per card, capped at the sale; voided deals are left out. The group
 page reports it by day range in `APP_TZ` and downloads a statement CSV. There is no payout ledger
 yet: settle up by date range.
+
+**Personal collection (PC).** Viet wanted a one-tap way to keep a card instead of pricing it. Groups
+gained a third kind, `personal`: its cards are left out of Pricing, the sticker queue, the home page
+stock counts, the paper inventory list, and re-pricing; the phone gets them as `removed`, so they
+cannot be rung up. **Move to PC** on a Pricing row moves my in-stock copies of that card (never
+consigned ones) into the first personal group, making "PC" if there is none, and clears their price.
+PC cards stay in gain and loss: they are still mine. To sell one after all, move it to another group.

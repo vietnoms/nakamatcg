@@ -40,6 +40,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
           Groups
         </Link>
         <h1 className="text-2xl font-semibold">{group?.name ?? "No group"}</h1>
+        {group?.kind === "personal" && <Badge tone="blue">PC, not for sale</Badge>}
         {group?.kind === "consignment" && (
           <Badge tone="amber">
             Consignment, {bpsToPercent(group.feeBps ?? 0)}% fee{group.minFeeCents ? `, at least ${formatCents(group.minFeeCents)} a card` : ""}

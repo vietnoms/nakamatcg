@@ -5,7 +5,53 @@ import { events, products, transactionLines, transactions, unitGroups, units } f
 import { badgeFor, type ProductKind } from "@/import/collectr";
 import { consignmentFee, consignmentTotals, type ConsignmentTotals } from "@/lib/consignment";
 
-export type GroupKind = "own" | "consignment";
+/** own: mine, for sale; consignment: someone else's, for sale; personal: my PC, not for sale */
+export type GroupKind = "own" | "consignment" | "personal";
+
+/** A unit that is for sale: not in a personal-collection group. Pricing, stickers and the POS use it. */
+export const forSale = sql`(${units.groupId} is null or ${units.groupId} not in (select ${unitGroups.id} from ${unitGroups} where ${unitGroups.kind} = 'personal'))`;
+
+/** The name of the group "Move to PC" makes when there is no personal-collection group yet. */
+export const PC_NAME = "PC";
+
+/** The personal-collection group: the first one there is, else "PC" (an existing group of that name becomes it). */
+export async function personalGroup(db: Db): Promise<string> {
+  const [pc] = await db.select({ id: unitGroups.id }).from(unitGroups).where(eq(unitGroups.kind, "personal")).orderBy(asc(unitGroups.createdAt)).limit(1);
+  if (pc) return pc.id;
+  const [named] = await db.select({ id: unitGroups.id, kind: unitGroups.kind }).from(unitGroups).where(eq(unitGroups.name, PC_NAME));
+  if (named && named.kind !== "consignment") {
+    await db.update(unitGroups).set({ kind: "personal", feeBps: null, minFeeCents: null }).where(eq(unitGroups.id, named.id));
+    return named.id;
+  }
+  const [made] = await db
+    .insert(unitGroups)
+    .values({ name: named ? "Personal collection" : PC_NAME, kind: "personal" })
+    .returning({ id: unitGroups.id });
+  return made!.id;
+}
+
+/**
+ * Takes my in-stock copies of a product off sale: into the personal collection, with no price, so
+ * they leave pricing, the sticker queue and the POS. Consigned copies are not mine and stay put.
+ */
+export async function moveProductToPersonal(db: Db, productId: string): Promise<{ moved: number; groupId: string }> {
+  return db.transaction(async (t) => {
+    const tx = t as unknown as Db;
+    const groupId = await personalGroup(tx);
+    const rows = await tx
+      .update(units)
+      .set({ groupId, priceCents: null, reprint: false, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(units.productId, productId),
+          eq(units.status, "in_stock"),
+          sql`(${units.groupId} is null or ${units.groupId} in (select ${unitGroups.id} from ${unitGroups} where ${unitGroups.kind} = 'own'))`,
+        ),
+      )
+      .returning({ id: units.id });
+    return { moved: rows.length, groupId };
+  });
+}
 
 export type Group = {
   id: string;
