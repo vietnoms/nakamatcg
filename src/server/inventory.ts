@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { labelPrints, products, units } from "@/db/schema";
+import { forSale } from "./groups";
 import type { ProductKind } from "@/import/collectr";
 
 export type PricingRow = {
@@ -48,7 +49,7 @@ export async function pricingRows(db: Db): Promise<PricingRow[]> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(eq(units.status, "in_stock"))
+    .where(and(eq(units.status, "in_stock"), forSale))
     .groupBy(products.id)
     .orderBy(asc(products.setName), asc(products.name), asc(products.cardNumber));
 
@@ -74,12 +75,12 @@ export async function pricingRows(db: Db): Promise<PricingRow[]> {
   });
 }
 
-/** Sets the price of every in-stock copy of a product. A changed price puts the copy in the label queue. */
+/** Sets the price of every in-stock copy of a product that is for sale (not in the PC). A changed price puts the copy in the label queue. */
 export async function setProductPrice(db: Db, productId: string, priceCents: number | null): Promise<void> {
   await db
     .update(units)
     .set({ priceCents, updatedAt: sql`now()` })
-    .where(and(eq(units.productId, productId), eq(units.status, "in_stock")));
+    .where(and(eq(units.productId, productId), eq(units.status, "in_stock"), forSale));
 }
 
 export async function setProductPrices(db: Db, prices: { productId: string; priceCents: number }[]): Promise<void> {
@@ -124,7 +125,7 @@ export async function labelQueue(db: Db): Promise<LabelQueueItem[]> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(and(eq(units.status, "in_stock"), isNotNull(units.priceCents), or(sql`${units.stickeredPriceCents} is distinct from ${units.priceCents}`, eq(units.reprint, true))))
+    .where(and(eq(units.status, "in_stock"), forSale, isNotNull(units.priceCents), or(sql`${units.stickeredPriceCents} is distinct from ${units.priceCents}`, eq(units.reprint, true))))
     .orderBy(asc(products.setName), asc(products.name), asc(products.cardNumber), asc(units.code));
   return rows.map((r) => ({ ...r, priceCents: r.priceCents!, kind: r.kind as ProductKind }));
 }
@@ -204,6 +205,7 @@ export async function unitByCode(db: Db, code: string): Promise<UnitView | null>
   return r ? { ...r, kind: r.kind as ProductKind } : null;
 }
 
+/** Stock counts for the home page. Cards in the personal collection are not stock. */
 export async function inventoryCounts(db: Db) {
   const [r] = await db
     .select({
@@ -213,6 +215,7 @@ export async function inventoryCounts(db: Db) {
       sold: sql<number>`count(*) filter (where ${units.status} = 'sold')::int`,
       stockValueCents: sql<number>`coalesce(sum(${units.priceCents}) filter (where ${units.status} = 'in_stock'), 0)::int`,
     })
-    .from(units);
+    .from(units)
+    .where(forSale);
   return r ?? { inStock: 0, unpriced: 0, needLabels: 0, sold: 0, stockValueCents: 0 };
 }

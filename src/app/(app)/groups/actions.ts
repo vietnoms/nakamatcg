@@ -8,7 +8,7 @@ import { createGroup, deleteGroup, moveUnits, updateGroup } from "@/server/group
 
 const GroupInput = z.object({
   name: z.string().trim().min(1).max(100),
-  kind: z.enum(["own", "consignment"]),
+  kind: z.enum(["own", "consignment", "personal"]),
   feeBps: z.number().int().min(0).max(10000).nullable(),
   minFeeCents: z.number().int().min(0).max(1_000_000).nullable(),
   note: z.string().max(500).optional(),

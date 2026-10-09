@@ -170,13 +170,13 @@ export type ImportResult = {
   grouped: number;
 };
 
-/** The own group for each portfolio name, made when missing. A name taken by a consignor gets no group. */
+/** My group (own or PC) for each portfolio name, made when missing. A name taken by a consignor gets no group. */
 async function portfolioGroups(db: Db, names: string[]): Promise<{ ids: Map<string, string>; created: number }> {
   const ids = new Map<string, string>();
   const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
   if (wanted.length === 0) return { ids, created: 0 };
   const found = await db.select().from(unitGroups).where(inArray(unitGroups.name, wanted));
-  for (const g of found) if (g.kind === "own") ids.set(g.name, g.id);
+  for (const g of found) if (g.kind !== "consignment") ids.set(g.name, g.id);
   const missing = wanted.filter((n) => !found.some((g) => g.name === n));
   if (missing.length) {
     const made = await db

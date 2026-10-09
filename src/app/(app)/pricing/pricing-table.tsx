@@ -6,7 +6,8 @@ import { badgeFor } from "@/import/collectr";
 import { formatCents, parseDollars } from "@/lib/money";
 import { suggestPrice, type PricingRule } from "@/lib/pricing";
 import type { PricingRow } from "@/server/inventory";
-import { savePrice, savePrices } from "./actions";
+import Link from "next/link";
+import { moveToPc, savePrice, savePrices } from "./actions";
 
 type Filter = "all" | "unpriced" | "priced";
 type Sort = "set" | "market-desc" | "market-asc" | "name";
@@ -23,6 +24,9 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
   const [set, setSet] = useState("");
   const [sort, setSort] = useState<Sort>("set");
   const [bulkPending, startBulk] = useTransition();
+  // cards just moved to the PC: hidden here, with a link to where they went
+  const [gone, setGone] = useState<Set<string>>(new Set());
+  const [pcNote, setPcNote] = useState<{ text: string; groupId: string } | null>(null);
   const inputs = useRef(new Map<string, HTMLInputElement>());
   // Enter moves focus on, which blurs the row it just saved: that blur must not save again
   const skipBlur = useRef<string | null>(null);
@@ -47,13 +51,26 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, filter, kind, set, sort, initial]);
 
-  const totals = useMemo(
-    () => ({
-      unpriced: rows.filter((r) => r.priceCents === null).reduce((n, r) => n + r.inStock, 0),
-      copies: rows.reduce((n, r) => n + r.inStock, 0),
-    }),
-    [rows],
-  );
+  const totals = useMemo(() => {
+    const live = rows.filter((r) => !gone.has(r.productId));
+    return {
+      unpriced: live.filter((r) => r.priceCents === null).reduce((n, r) => n + r.inStock, 0),
+      copies: live.reduce((n, r) => n + r.inStock, 0),
+    };
+  }, [rows, gone]);
+
+  async function toPc(r: PricingRow) {
+    if (!confirm(`Move ${r.inStock === 1 ? "" : `all ${r.inStock} copies of `}${r.name} to your PC? It comes off pricing, stickers and the POS.`)) return;
+    try {
+      const res = await moveToPc(r.productId);
+      const left = r.inStock - res.moved;
+      if (left > 0) setRows((rs) => rs.map((x) => (x.productId === r.productId ? { ...x, inStock: left } : x)));
+      else setGone((g) => new Set(g).add(r.productId));
+      setPcNote({ text: `${r.name}: ${res.moved} cop${res.moved === 1 ? "y" : "ies"} moved to your PC${left > 0 ? ` (${left} consigned stay)` : ""}.`, groupId: res.groupId });
+    } catch (e) {
+      setPcNote({ text: e instanceof Error ? e.message : "Could not move it", groupId: "" });
+    }
+  }
 
   function focusAt(i: number) {
     const next = visible[i];
@@ -154,6 +171,17 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
         </span>
       </div>
 
+      {pcNote && (
+        <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
+          {pcNote.text}{" "}
+          {pcNote.groupId && (
+            <Link href={`/groups/${pcNote.groupId}`} className="font-medium underline">
+              Open PC
+            </Link>
+          )}
+        </p>
+      )}
+
       <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 dark:bg-zinc-950 text-left text-xs text-zinc-500 dark:text-zinc-400">
@@ -168,6 +196,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
           </thead>
           <tbody>
             {visible.map((v, i) => {
+              if (gone.has(v.productId)) return null;
               const r = rows.find((x) => x.productId === v.productId) ?? v;
               const suggested = suggestPrice(r.marketCents, rule);
               const state = saving[r.productId];
@@ -180,6 +209,14 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
                     </div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
                       {[r.setName, r.cardNumber && `#${r.cardNumber}`, r.variant].filter(Boolean).join(" · ")}
+                      <button
+                        type="button"
+                        onClick={() => void toPc(r)}
+                        title="Keep it: personal collection, not for sale"
+                        className="ml-2 rounded border border-zinc-300 px-1.5 text-[11px] text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                      >
+                        Move to PC
+                      </button>
                     </div>
                   </td>
                   <td className="p-2 text-right tabular-nums">{r.inStock}</td>

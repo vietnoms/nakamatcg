@@ -22,6 +22,10 @@ export default async function GroupsPage() {
           </li>
           <li>Open a group to see its cards, tick some, and move them to another group.</li>
           <li>
+            <b>PC (personal collection)</b>: cards you keep. They stay off Pricing, the sticker queue and the POS. On the Pricing
+            page, <b>Move to PC</b> on a card sends it here; to sell it after all, move it from here to another group.
+          </li>
+          <li>
             <b>Consignment</b>: cards you sell for someone else. Make a consignment group with your fee, then on the Import page
             choose <b>A consignor&apos;s cards</b> and drop their Collectr CSV. Their cards are kept apart from yours (no cost, not in
             your gain and loss), sell like any other card, and the group page shows what sold, your fee, and what you owe them.
@@ -60,6 +64,8 @@ export default async function GroupsPage() {
                     <span className="text-xs text-zinc-500 dark:text-zinc-400">not grouped</span>
                   ) : g.kind === "consignment" ? (
                     <Badge tone="amber">Consignment {bpsToPercent(g.feeBps ?? 0)}%</Badge>
+                  ) : g.kind === "personal" ? (
+                    <Badge tone="blue">PC, not for sale</Badge>
                   ) : (
                     <Badge>Mine</Badge>
                   )}
