@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, inArray, isNotNull, max, notInArray, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { events, products, transactionLines, transactions, units } from "@/db/schema";
+import { events, products, transactionLines, transactions, unitGroups, units } from "@/db/schema";
 import { badgeFor, type ProductKind } from "@/import/collectr";
 
 /** Copies of one card in stock at one cost: what they cost me and what they are worth now. */
@@ -35,6 +35,9 @@ export type Unrealized = {
   marketAsOf: Date | null;
 };
 
+/** Consigned cards are someone else's: their gains are not mine (the fee is, on the Groups page). */
+const mine = sql`(${units.groupId} is null or ${units.groupId} not in (select ${unitGroups.id} from ${unitGroups} where ${unitGroups.kind} = 'consignment'))`;
+
 const pct = (gain: number, cost: number) => (cost > 0 ? Math.round((gain * 10000) / cost) / 100 : null);
 
 /**
@@ -59,7 +62,7 @@ export async function unrealizedGains(db: Db): Promise<Unrealized> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(and(eq(units.status, "in_stock"), isNotNull(units.costCents), isNotNull(products.marketCents)))
+    .where(and(eq(units.status, "in_stock"), isNotNull(units.costCents), isNotNull(products.marketCents), mine))
     .groupBy(products.id, units.costCents);
 
   const [left] = await db
@@ -70,7 +73,7 @@ export async function unrealizedGains(db: Db): Promise<Unrealized> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(eq(units.status, "in_stock"));
+    .where(and(eq(units.status, "in_stock"), mine));
 
   return {
     rows: rows.map((r) => {
@@ -134,6 +137,7 @@ export async function realizedGains(db: Db, opts: { eventId?: string | null } = 
     isNotNull(transactionLines.unitId),
     inArray(transactions.kind, ["sale", "trade"]),
     notInArray(transactions.id, sql`(${voided})`),
+    mine,
   ];
   if (opts.eventId !== undefined) {
     conds.push(opts.eventId === null ? sql`${transactions.eventId} is null` : eq(transactions.eventId, opts.eventId));

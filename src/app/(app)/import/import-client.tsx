@@ -4,11 +4,13 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Select } from "@/components/ui";
 import { FIELDS, FIELD_LABELS, detectMapping, parseCsv, type Field, type Mapping } from "@/import/collectr";
-import { formatCents } from "@/lib/money";
+import { bpsToPercent, percentToBps } from "@/lib/consignment";
+import { formatCents, parseDollars } from "@/lib/money";
 import type { ImportPlan, ImportResult } from "@/server/import";
 import { commitImport, previewImport } from "./actions";
 
 type Preview = ImportPlan & { skipped: { line: number; reason: string; name: string }[] };
+type Result = ImportResult & { groupId: string | null };
 
 const EXCLUDED_KEY = "nk:import:excluded-portfolios";
 function loadExcluded(): string[] {
@@ -26,14 +28,25 @@ function saveExcluded(names: string[]) {
   }
 }
 
-export function ImportClient() {
+type Consignor = { id: string; name: string; feeBps: number };
+
+export function ImportClient({ consignors }: { consignors: Consignor[] }) {
   const [file, setFile] = useState<{ name: string; text: string } | null>(null);
   const [mapping, setMapping] = useState<Mapping | null>(null);
   const [portfolios, setPortfolios] = useState<string[] | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // whose cards the file holds
+  const [owner, setOwner] = useState<"own" | "consignor">("own");
+  const [consignorId, setConsignorId] = useState<string>(consignors[0]?.id ?? "new");
+  const [newName, setNewName] = useState("");
+  const [newFee, setNewFee] = useState("15");
+  const [newMin, setNewMin] = useState("");
+  const feePct = Number(newFee);
+  const ownerReady =
+    owner === "own" || consignorId !== "new" || (newName.trim() !== "" && newFee.trim() !== "" && Number.isFinite(feePct) && feePct >= 0 && feePct <= 100);
 
   const parsed = useMemo(() => (file ? parseCsv(file.text) : null), [file]);
   const missingColumns = mapping !== null && (mapping.name === null || (mapping.market === null && mapping.marketTotal === null));
@@ -74,7 +87,13 @@ export function ImportClient() {
   }
 
   function input() {
-    return { text: file!.text, filename: file!.name, mapping: mapping!, portfolios };
+    const who =
+      owner === "own"
+        ? { kind: "own" as const }
+        : consignorId !== "new"
+          ? { kind: "consignment" as const, groupId: consignorId }
+          : { kind: "newConsignor" as const, name: newName.trim(), feeBps: percentToBps(feePct), minFeeCents: parseDollars(newMin) ?? 0 };
+    return { text: file!.text, filename: file!.name, mapping: mapping!, portfolios, owner: who };
   }
 
   function runPreview() {
@@ -126,6 +145,92 @@ export function ImportClient() {
 
       {parsed && mapping && (
         <Card>
+          <div className="mb-4 space-y-2 text-sm">
+            <p className="font-medium">Whose cards are these?</p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["own", "Mine (groups from Collectr portfolios)"],
+                  ["consignor", "A consignor's cards"],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    setPreview(null);
+                    setOwner(k);
+                  }}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    owner === k
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950"
+                      : "border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {owner === "consignor" && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 p-3 dark:bg-amber-950/40">
+                <Select
+                  value={consignorId}
+                  onChange={(e) => {
+                    setPreview(null);
+                    setConsignorId(e.target.value);
+                  }}
+                >
+                  {consignors.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({bpsToPercent(c.feeBps)}% fee)
+                    </option>
+                  ))}
+                  <option value="new">New consignor...</option>
+                </Select>
+                {consignorId === "new" && (
+                  <>
+                    <input
+                      value={newName}
+                      onChange={(e) => {
+                        setPreview(null);
+                        setNewName(e.target.value);
+                      }}
+                      placeholder="Their name, e.g. Alex"
+                      className="w-44 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                    <label className="flex items-center gap-1.5">
+                      fee
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.5"
+                        value={newFee}
+                        onChange={(e) => setNewFee(e.target.value)}
+                        className="w-16 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right dark:border-zinc-700 dark:bg-zinc-900"
+                      />
+                      %
+                    </label>
+                    <label className="flex items-center gap-1.5">
+                      at least $
+                      <input
+                        inputMode="decimal"
+                        value={newMin}
+                        onChange={(e) => setNewMin(e.target.value)}
+                        placeholder="0"
+                        className="w-16 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right dark:border-zinc-700 dark:bg-zinc-900"
+                      />
+                      a card
+                    </label>
+                  </>
+                )}
+                <p className="w-full text-xs text-amber-900 dark:text-amber-200">
+                  Every card in this file goes into their group, with no cost (it isn&apos;t yours) and apart from your own copies.
+                  Their cards sell like yours; the group page works out your fee and what you owe them.
+                </p>
+              </div>
+            )}
+          </div>
           {allPortfolios.length > 1 && (
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium">Which portfolios are you bringing?</p>
@@ -193,7 +298,7 @@ export function ImportClient() {
           </details>
 
           <div className="mt-4 flex items-center gap-3">
-            <Button onClick={runPreview} disabled={pending || mapping.name === null}>
+            <Button onClick={runPreview} disabled={pending || mapping.name === null || !ownerReady}>
               {pending && !preview ? "Checking..." : "Preview"}
             </Button>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Shows what would change. Nothing is saved yet.</span>
@@ -215,6 +320,11 @@ export function ImportClient() {
             <span>
               <b>{preview.priceChanges}</b> market price changes
             </span>
+            {preview.ungrouped > 0 && (
+              <span>
+                <b>{preview.ungrouped}</b> copies already here get their portfolio&apos;s group
+              </span>
+            )}
             {preview.skipped.length > 0 && (
               <span className="text-amber-700 dark:text-amber-300">
                 <b>{preview.skipped.length}</b> rows skipped
@@ -267,7 +377,10 @@ export function ImportClient() {
             </details>
           )}
           <div className="mt-4">
-            <Button onClick={runImport} disabled={pending || (preview.newUnits === 0 && preview.newProducts === 0 && preview.priceChanges === 0)}>
+            <Button
+              onClick={runImport}
+              disabled={pending || (preview.newUnits === 0 && preview.newProducts === 0 && preview.priceChanges === 0 && preview.ungrouped === 0)}
+            >
               {pending ? "Importing..." : "Import"}
             </Button>
           </div>
@@ -277,10 +390,20 @@ export function ImportClient() {
       {result && (
         <Card>
           <p className="text-sm">
-            Imported: {result.newProducts} new products, {result.newUnits} new copies, {result.priceChanges} price changes.{" "}
+            Imported: {result.newProducts} new products, {result.newUnits} new copies, {result.priceChanges} price changes
+            {result.newGroups > 0 && `, ${result.newGroups} new groups`}
+            {result.grouped > 0 && `, ${result.grouped} earlier copies grouped`}.{" "}
             <Link href="/pricing" className="font-medium underline">
               Go price them
             </Link>
+            {result.groupId && (
+              <>
+                {" · "}
+                <Link href={`/groups/${result.groupId}`} className="font-medium underline">
+                  Open the consignor&apos;s group
+                </Link>
+              </>
+            )}
           </p>
         </Card>
       )}
