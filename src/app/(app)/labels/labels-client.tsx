@@ -8,7 +8,8 @@ import { parseHostStatus, statusProblems } from "@/labels/status";
 import { labelDataFor } from "@/labels/label-data";
 import { LabelPreview } from "@/labels/label-preview";
 import { CALIBRATE_ZPL, batchZpl, testLabelZpl, type LabelSettings } from "@/labels/zpl";
-import { formatCents } from "@/lib/money";
+import { formatCents, parseDollars } from "@/lib/money";
+import { NO_FILTER, isFiltered, matches, type QueueFilter, type ValueBasis } from "@/labels/queue-filter";
 import type { LabelQueueItem } from "@/server/inventory";
 import { markPrintedAction, reprintCodes } from "./actions";
 
@@ -78,12 +79,54 @@ export function LabelsClient({
     }
     return [...by.values()].sort((a, b) => (a.id === "none" ? 1 : b.id === "none" ? -1 : a.name.localeCompare(b.name)));
   }, [queue]);
-  const shown = useMemo(() => {
-    const n = search.trim().toLowerCase();
-    return queue.filter(
-      (x) => (!group || (x.groupId ?? "none") === group) && (!n || `${x.code} ${x.name} ${x.setName} ${x.cardNumber}`.toLowerCase().includes(n)),
-    );
-  }, [queue, search, group]);
+  // more filters: set, type, why it is queued, and a value range on price, market or cost
+  const [set, setSet] = useState("");
+  const [kind, setKind] = useState("");
+  const [reason, setReason] = useState<QueueFilter["reason"]>("");
+  const [basis, setBasis] = useState<ValueBasis>("price");
+  const [minText, setMinText] = useState("");
+  const [maxText, setMaxText] = useState("");
+  const filter: QueueFilter = {
+    search,
+    group,
+    set,
+    kind,
+    reason,
+    basis,
+    min: minText.trim() ? parseDollars(minText) : null,
+    max: maxText.trim() ? parseDollars(maxText) : null,
+  };
+  const sets = useMemo(() => {
+    const by = new Map<string, number>();
+    for (const q of queue) by.set(q.setName, (by.get(q.setName) ?? 0) + 1);
+    return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [queue]);
+  const kinds = useMemo(() => [...new Set(queue.map((q) => q.kind))].sort(), [queue]);
+  function clearFilters() {
+    setSearch("");
+    setGroup(NO_FILTER.group);
+    setSet("");
+    setKind("");
+    setReason("");
+    setBasis("price");
+    setMinText("");
+    setMaxText("");
+  }
+  const shown = useMemo(
+    () => queue.filter((x) => matches(x, filter)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queue, search, group, set, kind, reason, basis, minText, maxText],
+  );
+  function tick(on: boolean, rows: { unitId: string }[]) {
+    setSelected((s) => {
+      const n = new Set(s);
+      for (const x of rows) {
+        if (on) n.add(x.unitId);
+        else n.delete(x.unitId);
+      }
+      return n;
+    });
+  }
   // print what is ticked AND on screen: a group or search filter never prints cards it hides
   const chosen = useMemo(() => shown.filter((q) => selected.has(q.unitId)), [shown, selected]);
   const labels = useMemo(() => chosen.map((q) => ({ unitId: q.unitId, data: labelDataFor(q, pricedOn) })), [chosen, pricedOn]);
@@ -199,6 +242,78 @@ export function LabelsClient({
             </Select>
           )}
         </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {sets.length > 1 && (
+            <Select value={set} onChange={(e) => setSet(e.target.value)} aria-label="Set">
+              <option value="">All sets</option>
+              {sets.map(([name, n]) => (
+                <option key={name} value={name}>
+                  {name || "(no set)"} ({n})
+                </option>
+              ))}
+            </Select>
+          )}
+          {kinds.length > 1 && (
+            <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Type">
+              <option value="">Raw, slabs, sealed</option>
+              {kinds.map((k) => (
+                <option key={k} value={k}>
+                  {k === "raw" ? "Raw only" : k === "slab" ? "Slabs only" : "Sealed only"}
+                </option>
+              ))}
+            </Select>
+          )}
+          <Select value={reason} onChange={(e) => setReason(e.target.value as QueueFilter["reason"])} aria-label="Why">
+            <option value="">New, changed, reprints</option>
+            <option value="new">New stickers only</option>
+            <option value="changed">Changed prices only</option>
+            <option value="reprint">Reprints only</option>
+          </Select>
+          <span className="flex items-center gap-1">
+            <Select value={basis} onChange={(e) => setBasis(e.target.value as ValueBasis)} aria-label="Value on">
+              <option value="price">Price</option>
+              <option value="market">Market</option>
+              <option value="cost">Cost paid</option>
+            </Select>
+            from $
+            <input
+              inputMode="decimal"
+              value={minText}
+              onChange={(e) => setMinText(e.target.value)}
+              placeholder="0"
+              aria-label="At least"
+              className="w-16 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            to $
+            <input
+              inputMode="decimal"
+              value={maxText}
+              onChange={(e) => setMaxText(e.target.value)}
+              placeholder="any"
+              aria-label="At most"
+              className="w-16 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </span>
+          {isFiltered(filter) && (
+            <button type="button" onClick={clearFilters} className="text-zinc-500 underline dark:text-zinc-400">
+              Clear filters
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-zinc-500 dark:text-zinc-400">
+            {chosen.length} ticked of {shown.length} shown{shown.length !== queue.length && ` (${queue.length} in the queue)`}
+          </span>
+          <Button variant="secondary" onClick={() => tick(true, shown)} disabled={shown.length === 0}>
+            Tick all shown
+          </Button>
+          <Button variant="secondary" onClick={() => tick(false, shown)} disabled={chosen.length === 0}>
+            Untick all shown
+          </Button>
+          <Button variant="ghost" onClick={() => tick(false, queue)} disabled={selected.size === 0}>
+            Untick everything
+          </Button>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={print} disabled={pending || !printer || labels.length === 0 || !baseUrl}>
             {pending && progress ? progress : `Print ${labels.length} sticker${labels.length === 1 ? "" : "s"}`}
@@ -221,16 +336,8 @@ export function LabelsClient({
                   <input
                     type="checkbox"
                     checked={allOn}
-                    onChange={() =>
-                      setSelected((s) => {
-                        const n = new Set(s);
-                        for (const x of shown) {
-                          if (allOn) n.delete(x.unitId);
-                          else n.add(x.unitId);
-                        }
-                        return n;
-                      })
-                    }
+                    aria-label="Tick all shown"
+                    onChange={() => tick(!allOn, shown)}
                   />
                 </th>
                 <th className="p-2">Code</th>
@@ -281,6 +388,13 @@ export function LabelsClient({
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-zinc-500 dark:text-zinc-400">
                     Every priced card has an up-to-date sticker.
+                  </td>
+                </tr>
+              )}
+              {queue.length > 0 && shown.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-zinc-500 dark:text-zinc-400">
+                    No stickers match these filters.
                   </td>
                 </tr>
               )}
