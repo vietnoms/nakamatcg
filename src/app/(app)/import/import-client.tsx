@@ -44,6 +44,11 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
   const [newName, setNewName] = useState("");
   const [newFee, setNewFee] = useState("15");
   const [newMin, setNewMin] = useState("");
+  // what I paid: the costs in the file, or a whole collection bought at a % of market
+  const [lot, setLot] = useState(false);
+  const [lotPct, setLotPct] = useState("70");
+  const lotNum = Number(lotPct);
+  const lotReady = !lot || (lotPct.trim() !== "" && Number.isFinite(lotNum) && lotNum >= 1 && lotNum <= 200);
   const feePct = Number(newFee);
   const ownerReady =
     owner === "own" || consignorId !== "new" || (newName.trim() !== "" && newFee.trim() !== "" && Number.isFinite(feePct) && feePct >= 0 && feePct <= 100);
@@ -93,7 +98,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
         : consignorId !== "new"
           ? { kind: "consignment" as const, groupId: consignorId }
           : { kind: "newConsignor" as const, name: newName.trim(), feeBps: percentToBps(feePct), minFeeCents: parseDollars(newMin) ?? 0 };
-    return { text: file!.text, filename: file!.name, mapping: mapping!, portfolios, owner: who };
+    return { text: file!.text, filename: file!.name, mapping: mapping!, portfolios, owner: who, lotPercent: owner === "own" && lot ? lotNum : null };
   }
 
   function runPreview() {
@@ -231,6 +236,57 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
               </div>
             )}
           </div>
+          {owner === "own" && (
+            <div className="mb-4 space-y-2 text-sm">
+              <p className="font-medium">What did you pay?</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {(
+                  [
+                    [false, "The costs in Collectr"],
+                    [true, "Bought as a lot"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      setPreview(null);
+                      setLot(k);
+                    }}
+                    className={`rounded-full border px-3 py-1.5 ${
+                      lot === k
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950"
+                        : "border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                {lot && (
+                  <label className="flex items-center gap-1.5">
+                    at
+                    <input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={lotPct}
+                      onChange={(e) => {
+                        setPreview(null);
+                        setLotPct(e.target.value);
+                      }}
+                      className="w-16 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                    % of market
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {lot
+                  ? "Every new copy costs that share of its market price today, in place of the costs in the file (those are the seller's), so gain and loss starts from what you paid."
+                  : "Each copy keeps its cost from Collectr. Copies with no cost (say, scanned into a display portfolio) take the cost of the same card in a portfolio you leave out below."}
+              </p>
+            </div>
+          )}
           {allPortfolios.length > 1 && (
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium">Which portfolios are you bringing?</p>
@@ -298,7 +354,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
           </details>
 
           <div className="mt-4 flex items-center gap-3">
-            <Button onClick={runPreview} disabled={pending || mapping.name === null || !ownerReady}>
+            <Button onClick={runPreview} disabled={pending || mapping.name === null || !ownerReady || !lotReady}>
               {pending && !preview ? "Checking..." : "Preview"}
             </Button>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Shows what would change. Nothing is saved yet.</span>
@@ -323,6 +379,17 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
             {preview.ungrouped > 0 && (
               <span>
                 <b>{preview.ungrouped}</b> copies already here get their portfolio&apos;s group
+              </span>
+            )}
+            {preview.lotCostCents !== null && (
+              <span>
+                bought for <b>{formatCents(preview.lotCostCents)}</b>
+                {preview.lotNoMarket > 0 && <span className="text-amber-700 dark:text-amber-300"> ({preview.lotNoMarket} copies have no market price, so no cost)</span>}
+              </span>
+            )}
+            {preview.costsMatched > 0 && (
+              <span>
+                <b>{preview.costsMatched}</b> copies with no cost take it from the same card in your other portfolios
               </span>
             )}
             {preview.skipped.length > 0 && (
@@ -379,7 +446,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
           <div className="mt-4">
             <Button
               onClick={runImport}
-              disabled={pending || (preview.newUnits === 0 && preview.newProducts === 0 && preview.priceChanges === 0 && preview.ungrouped === 0)}
+              disabled={pending || (preview.newUnits === 0 && preview.newProducts === 0 && preview.priceChanges === 0 && preview.ungrouped === 0 && preview.costsMatched === 0)}
             >
               {pending ? "Importing..." : "Import"}
             </Button>
@@ -392,7 +459,8 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
           <p className="text-sm">
             Imported: {result.newProducts} new products, {result.newUnits} new copies, {result.priceChanges} price changes
             {result.newGroups > 0 && `, ${result.newGroups} new groups`}
-            {result.grouped > 0 && `, ${result.grouped} earlier copies grouped`}.{" "}
+            {result.grouped > 0 && `, ${result.grouped} earlier copies grouped`}
+            {result.costsMatched > 0 && `, ${result.costsMatched} costs filled from your other portfolios`}.{" "}
             <Link href="/pricing" className="font-medium underline">
               Go price them
             </Link>

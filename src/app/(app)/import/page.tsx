@@ -28,6 +28,15 @@ export default async function ImportPage() {
           Override you set in Collectr is used as the market price.
         </p>
         <p>
+          <b>Display portfolio with no costs?</b> If you scanned cards into a new portfolio that you already own in another one,
+          export everything, leave the other portfolio <b>unticked</b>, and import: each copy with no cost takes what you paid for
+          the same card there (same condition first, then any condition), one copy each. Re-importing fills copies imported earlier too.
+        </p>
+        <p>
+          <b>Bought someone&apos;s whole collection?</b> Drop their Collectr CSV, pick <b>Bought as a lot</b> and the percentage you
+          paid (say 70%): every new copy costs that share of its market price today, so gain and loss starts from what you paid.
+        </p>
+        <p>
           <b>Importing again later is safe.</b> It updates market prices (that is how stale stickers get spotted) and only adds
           copies that are new. Cards you sold here are never added back, even if they are still in Collectr.
         </p>
