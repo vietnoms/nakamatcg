@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { FIELDS, parseCsv, parseRows, type Mapping } from "@/import/collectr";
 import { createGroup, getGroup, nameTaken } from "@/server/groups";
 import { applyImport, planImport, type ImportPlan, type ImportResult, type ImportTarget } from "@/server/import";
+import { addStock } from "@/server/stock";
 
 const Input = z.object({
   text: z.string().min(1).max(8_000_000),
@@ -69,4 +70,36 @@ export async function commitImport(raw: z.input<typeof Input>): Promise<ImportRe
   const res = { ...(await applyImport(getDb(), items(input).items, input.filename, t)), groupId: t.kind === "consignment" ? t.groupId : null };
   revalidatePath("/", "layout");
   return res;
+}
+
+const StockInput = z.object({
+  product: z.object({
+    kind: z.enum(["raw", "slab", "sealed"]),
+    name: z.string().trim().min(1).max(200),
+    setName: z.string().trim().max(200),
+    cardNumber: z.string().trim().max(50),
+    variant: z.string().trim().max(100),
+    condition: z.string().trim().max(20),
+    grader: z.string().trim().max(20),
+    grade: z.string().trim().max(20),
+    cert: z.string().trim().max(50),
+    marketCents: z.number().int().min(0).nullable(),
+  }),
+  qty: z.number().int().min(1).max(500),
+  costCents: z.number().int().min(0).max(100_000_000).nullable(),
+  priceCents: z.number().int().min(0).max(100_000_000).nullable(),
+  groupId: z.string().uuid().nullable(),
+});
+
+/** Adds copies by hand (sealed from a distributor, a store buy): no Collectr, no customer. */
+export async function addStockAction(raw: z.input<typeof StockInput>): Promise<{ codes: string[] }> {
+  await requireSession();
+  const input = StockInput.parse(raw);
+  if (input.groupId) {
+    const g = await getGroup(getDb(), input.groupId);
+    if (!g || g.kind === "consignment") throw new Error("Pick one of your own groups.");
+  }
+  const { codes } = await addStock(getDb(), input);
+  revalidatePath("/", "layout");
+  return { codes };
 }

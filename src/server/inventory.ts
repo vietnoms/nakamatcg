@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { labelPrints, products, units } from "@/db/schema";
 import { forSale } from "./groups";
+import { getSettings } from "./settings";
 import type { ProductKind } from "@/import/collectr";
 
 export type PricingRow = {
@@ -25,6 +26,11 @@ export type PricingRow = {
 };
 
 const needsLabel = sql`(${units.priceCents} is not null and (${units.stickeredPriceCents} is distinct from ${units.priceCents} or ${units.reprint}))`;
+
+/** Sealed gets a sticker only when Settings says so; otherwise it is rung up by name on the POS. */
+async function stickerable(db: Db) {
+  return (await getSettings(db)).stickerSealed ? sql`true` : sql`(${products.kind} <> 'sealed' or ${units.reprint})`;
+}
 
 /** Products with at least one copy in stock, for the pricing page. */
 export async function pricingRows(db: Db): Promise<PricingRow[]> {
@@ -107,6 +113,7 @@ export type LabelQueueItem = {
 
 /** In-stock units whose sticker is missing, out of date, or asked to be reprinted. */
 export async function labelQueue(db: Db): Promise<LabelQueueItem[]> {
+  const sticker = await stickerable(db);
   const rows = await db
     .select({
       unitId: units.id,
@@ -125,7 +132,7 @@ export async function labelQueue(db: Db): Promise<LabelQueueItem[]> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(and(eq(units.status, "in_stock"), forSale, isNotNull(units.priceCents), or(sql`${units.stickeredPriceCents} is distinct from ${units.priceCents}`, eq(units.reprint, true))))
+    .where(and(eq(units.status, "in_stock"), forSale, sticker, isNotNull(units.priceCents), or(sql`${units.stickeredPriceCents} is distinct from ${units.priceCents}`, eq(units.reprint, true))))
     .orderBy(asc(products.setName), asc(products.name), asc(products.cardNumber), asc(units.code));
   return rows.map((r) => ({ ...r, priceCents: r.priceCents!, kind: r.kind as ProductKind }));
 }
@@ -207,15 +214,17 @@ export async function unitByCode(db: Db, code: string): Promise<UnitView | null>
 
 /** Stock counts for the home page. Cards in the personal collection are not stock. */
 export async function inventoryCounts(db: Db) {
+  const sticker = await stickerable(db);
   const [r] = await db
     .select({
       inStock: sql<number>`count(*) filter (where ${units.status} = 'in_stock')::int`,
       unpriced: sql<number>`count(*) filter (where ${units.status} = 'in_stock' and ${units.priceCents} is null)::int`,
-      needLabels: sql<number>`count(*) filter (where ${units.status} = 'in_stock' and ${needsLabel})::int`,
+      needLabels: sql<number>`count(*) filter (where ${units.status} = 'in_stock' and ${needsLabel} and ${sticker})::int`,
       sold: sql<number>`count(*) filter (where ${units.status} = 'sold')::int`,
       stockValueCents: sql<number>`coalesce(sum(${units.priceCents}) filter (where ${units.status} = 'in_stock'), 0)::int`,
     })
     .from(units)
+    .innerJoin(products, eq(products.id, units.productId))
     .where(forSale);
   return r ?? { inStock: 0, unpriced: 0, needLabels: 0, sold: 0, stockValueCents: 0 };
 }

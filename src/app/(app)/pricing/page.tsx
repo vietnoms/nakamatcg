@@ -33,6 +33,8 @@ export default async function PricingPage() {
           <li>A price applies to <b>every copy</b> of that card in stock, and puts their stickers in the print queue.</li>
           <li>The small % under a price is how it compares to market, so a typo like $1,350 for a $13.50 card stands out.</li>
           <li><b>Accept suggested</b> prices every unpriced card in the current view at once; filter first (one set, raw only) to keep control.</li>
+          <li><b>Set all in view to market</b> re-prices every card in the current view, priced or not, to its market price (rounded by your rule). Pick <b>All</b> in the first filter to include priced cards. Changed prices go back in the sticker queue.</li>
+          <li><b>Move to PC</b> keeps a card: it leaves pricing, stickers and the POS. Sealed needs no stickers: ring it up with the POS <b>Sealed</b> button (turn sealed stickers on in Settings if you want them).</li>
         </ul>
       </Explainer>
       <PricingTable rows={rows} rule={r} />
