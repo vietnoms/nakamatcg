@@ -94,6 +94,11 @@ export const units = pgTable(
     /** import | buy | trade_in | manual */
     source: text("source").notNull(),
     importId: uuid("import_id").references(() => imports.id),
+    /**
+     * An imported copy whose condition was changed here sits under another product; this keeps the
+     * product it was imported as, so a re-import still counts it and does not add it again.
+     */
+    importedProductId: uuid("imported_product_id").references(() => products.id),
     /** null: no group; a consignment group's cards are not mine (no cost, left out of gains) */
     groupId: uuid("group_id").references(() => unitGroups.id),
     /** in_stock | sold | traded_out | removed */
@@ -128,7 +133,7 @@ export const priceHistory = pgTable(
       .notNull()
       .references(() => products.id),
     marketCents: integer("market_cents").notNull(),
-    /** collectr | manual | tcgcsv */
+    /** collectr | manual | tcgcsv | condition (estimated from another condition's price) */
     source: text("source").notNull(),
     importId: uuid("import_id").references(() => imports.id),
     observedAt: ts("observed_at").notNull().defaultNow(),
