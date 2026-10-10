@@ -4,7 +4,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { CardSightAI, getGradingInfo } from "cardsightai";
 import { z } from "zod";
 import { shortGrade } from "@/import/collectr";
-import { medianCents, type CardRead, type Game } from "@/lookup/match";
+import { GAMES, medianCents, type CardRead, type Game } from "@/lookup/match";
 import type { Confidence, GradedPricer, Provider } from "./identify";
 
 /* ------------------------------------------------------------------ CardSight */
@@ -13,6 +13,8 @@ import type { Confidence, GradedPricer, Provider } from "./identify";
 const SEGMENTS: Record<Game, string[]> = {
   pokemon: ["pokemon", "Pokemon"],
   one_piece: ["one-piece", "onepiece", "One Piece"],
+  // not confirmed that CardSight knows Riftbound: an unknown segment falls through to Claude
+  riftbound: ["riftbound", "Riftbound"],
 };
 const workingSegment = new Map<Game, string>();
 
@@ -80,11 +82,11 @@ export function cardsightGradedPricer(): GradedPricer | null {
 
 const ClaudeRead = z.object({
   is_card: z.boolean().describe("false if no trading card is visible"),
-  game: z.enum(["pokemon", "one_piece", "other"]),
+  game: z.enum(["pokemon", "one_piece", "riftbound", "other"]),
   name: z.string().describe("card name as printed, e.g. 'Charizard ex' or 'Monkey.D.Luffy'"),
   set_name: z.string().describe("set or expansion name if printed or certain from the symbol, else empty"),
   set_code: z.string().describe("set code printed near the number, e.g. 'OBF', 'SV3', 'OP01', else empty"),
-  number: z.string().describe("collector number exactly as printed, e.g. '223/197', 'TG05/TG30', 'OP01-003', 'SWSH284'"),
+  number: z.string().describe("collector number exactly as printed, e.g. '223/197', 'TG05/TG30', 'OP01-003', 'SWSH284', 'OGN-066/298'"),
   finish: z.string().describe("'holo', 'reverse holo', 'normal', '1st edition' or empty if unsure"),
   is_graded: z.boolean().describe("true if the card is sealed in a grading slab"),
   grader: z.string().describe("grading company on the slab label (PSA, CGC, BGS, TAG, SGC), else empty"),
@@ -93,8 +95,8 @@ const ClaudeRead = z.object({
   confidence: z.enum(["high", "medium", "low"]).describe("how sure you are of name AND number"),
 });
 
-const SYSTEM = `You read photos of trading cards taken at a card show: Pokemon TCG or One Piece Card Game, raw or inside a graded slab.
-Report what is printed; leave a field empty rather than guess. The collector number is small print near the bottom (Pokemon: bottom left or right like 223/197; One Piece: bottom right like OP01-003). For a slab, also read the label: company, grade and certification number. Use the card's English name when printed in English; for other languages give the printed name.`;
+const SYSTEM = `You read photos of trading cards taken at a card show: Pokemon TCG, One Piece Card Game or Riftbound (the League of Legends TCG), raw or inside a graded slab.
+Report what is printed; leave a field empty rather than guess. The collector number is small print near the bottom (Pokemon: bottom left or right like 223/197; One Piece: bottom right like OP01-003; Riftbound: set code and number like OGN-066/298). For a slab, also read the label: company, grade and certification number. Use the card's English name when printed in English; for other languages give the printed name.`;
 
 export function claudeProvider(): Provider | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
@@ -116,7 +118,7 @@ export function claudeProvider(): Provider | null {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: img.mediaType as "image/jpeg", data: Buffer.from(img.bytes).toString("base64") } },
-            { type: "text", text: `The vendor expects a ${game === "one_piece" ? "One Piece" : "Pokemon"} card.` },
+            { type: "text", text: `The vendor expects a ${GAMES.find((g) => g.id === game)?.label ?? "Pokemon"} card.` },
           ],
         },
       ],

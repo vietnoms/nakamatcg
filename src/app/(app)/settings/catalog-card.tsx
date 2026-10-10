@@ -38,7 +38,7 @@ export function CatalogCard({
       <div className="space-y-3 text-sm">
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           When you buy or trade for a card, the POS can photograph it and fill in the card and its price. Raw prices are
-          TCGplayer market prices for Pok&eacute;mon and One Piece (the same source Collectr uses for raw cards), refreshed every
+          TCGplayer market prices for Pok&eacute;mon, One Piece and Riftbound (the same source Collectr uses for raw cards), refreshed every
           night. Slab prices come from recent sales on CardSight.
         </p>
         <div className="flex flex-wrap items-center gap-2">

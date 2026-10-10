@@ -3,7 +3,18 @@
  * Pure. The collector number is the strongest signal; the name and set break ties.
  */
 
-export type Game = "pokemon" | "one_piece";
+export type Game = "pokemon" | "one_piece" | "riftbound";
+
+/** The games the price catalog and the photo lookup know, in button order. */
+export const GAMES: { id: Game; label: string }[] = [
+  { id: "pokemon", label: "Pokémon" },
+  { id: "one_piece", label: "One Piece" },
+  { id: "riftbound", label: "Riftbound" },
+];
+
+export function isGame(g: unknown): g is Game {
+  return GAMES.some((x) => x.id === g);
+}
 
 /** What a scan read off the card. Empty strings where nothing was readable. */
 export type CardRead = {
@@ -29,12 +40,18 @@ export type CatalogCandidate = {
   printings: { subType: string; marketCents: number | null }[];
 };
 
-/** "025/165" -> "25", "TG05/TG30" -> "TG5", "OP01-003" -> "OP01-003", "SWSH284" -> "SWSH284". */
+/**
+ * "025/165" -> "25", "TG05/TG30" -> "TG5", "OP01-003" -> "OP01-003", "SWSH284" -> "SWSH284",
+ * Riftbound "OGN-066/298" -> "66" (the set code is dropped, so a read with or without it matches).
+ */
 export function normalizeNumber(n: string): string {
   const s = n.toUpperCase().replace(/\s+/g, "").replace(/^#/, "");
   const head = s.split("/")[0] ?? "";
   // leading zeros of the trailing digits: TG05 -> TG5, 025 -> 25; keep One Piece's OP01-003 intact
   if (/^[A-Z]{2}\d{2}-\d{3}$/.test(head)) return head;
+  // Riftbound: a letters-only set code, a dash, then the number (with a variant letter: OGN-066a)
+  const rift = /^[A-Z]{2,4}-0*(\d+[A-Z]?)$/.exec(head);
+  if (rift) return rift[1]!;
   return head.replace(/^([A-Z]*)0+(\d)/, "$1$2");
 }
 

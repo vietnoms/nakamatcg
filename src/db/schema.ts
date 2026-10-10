@@ -244,7 +244,7 @@ export const loginAttempts = pgTable(
 );
 
 /**
- * TCGplayer's catalog for Pokemon and One Piece, from tcgcsv.com (a daily mirror of TCGplayer's
+ * TCGplayer's catalog for Pokemon, One Piece and Riftbound, from tcgcsv.com (a daily mirror of TCGplayer's
  * API), refreshed nightly. One row per product and printing (Normal, Holofoil, Reverse
  * Holofoil, ...), each with its own market price. Used to price cards customers bring to the
  * table; derived data, safe to drop and re-sync.
@@ -256,7 +256,7 @@ export const catalogItems = pgTable(
     productId: integer("product_id").notNull(),
     /** TCGplayer printing: Normal, Holofoil, Reverse Holofoil, 1st Edition Holofoil, ...; "" when unpriced */
     subType: text("sub_type").notNull(),
-    /** pokemon | one_piece */
+    /** pokemon | one_piece | riftbound */
     game: text("game").notNull(),
     groupId: integer("group_id").notNull(),
     setName: text("set_name").notNull(),

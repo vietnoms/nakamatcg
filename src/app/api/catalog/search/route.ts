@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/db/client";
+import { isGame } from "@/lookup/match";
 import { searchCatalog } from "@/server/catalog";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,6 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get("q") ?? "").slice(0, 100);
   const g = req.nextUrl.searchParams.get("game");
-  const game = g === "pokemon" || g === "one_piece" ? g : null;
+  const game = isGame(g) ? g : null;
   return NextResponse.json({ results: await searchCatalog(getDb(), q, game) }, { headers: { "Cache-Control": "no-store" } });
 }

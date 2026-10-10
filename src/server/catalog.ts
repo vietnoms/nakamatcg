@@ -9,6 +9,7 @@ const BASE = "https://tcgcsv.com/tcgplayer";
 export const CATEGORIES: { id: number; game: Game }[] = [
   { id: 3, game: "pokemon" },
   { id: 68, game: "one_piece" },
+  { id: 89, game: "riftbound" },
 ];
 
 type TcgGroup = { groupId: number; name: string };
@@ -46,7 +47,7 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
 }
 
 /**
- * Pulls every Pokemon and One Piece set from tcgcsv.com and upserts one row per product and
+ * Pulls every Pokemon, One Piece and Riftbound set from tcgcsv.com and upserts one row per product and
  * printing. About 300 sets; a few at a time to be polite. Records the run in catalog_syncs.
  */
 export async function syncCatalog(db: Db, fetchJson: Fetcher = defaultFetch, opts: { concurrency?: number } = {}): Promise<{ items: number; sets: number }> {

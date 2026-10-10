@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/db/client";
+import { isGame } from "@/lookup/match";
 import { lookupCard } from "@/server/identify";
 import { cardsightGradedPricer, cardsightProvider, claudeProvider } from "@/server/providers";
 
@@ -13,7 +14,8 @@ const MAX_BYTES = 6 * 1024 * 1024;
 export async function POST(req: NextRequest) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("image");
-  const game = form?.get("game") === "one_piece" ? "one_piece" : "pokemon";
+  const g = form?.get("game");
+  const game = isGame(g) ? g : "pokemon";
   if (!(file instanceof Blob) || !file.type.startsWith("image/")) return NextResponse.json({ error: "send an image" }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "image too large (6 MB max)" }, { status: 413 });
 
