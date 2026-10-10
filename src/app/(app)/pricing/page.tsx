@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { Explainer } from "@/components/explainer";
+import { GroupPicker } from "@/components/group-picker";
 import { getDb } from "@/db/client";
 import { formatCents } from "@/lib/money";
+import { listGroups, parseGroupParam } from "@/server/groups";
 import { pricingRows } from "@/server/inventory";
 import { getSettings } from "@/server/settings";
 import { PricingTable } from "./pricing-table";
 
 export const dynamic = "force-dynamic";
 
-export default async function PricingPage() {
+export default async function PricingPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
   const db = getDb();
-  const [rows, settings] = await Promise.all([pricingRows(db), getSettings(db)]);
+  const raw = (await searchParams).group ?? "";
+  const group = parseGroupParam(raw);
+  const [rows, settings, groups] = await Promise.all([pricingRows(db, { group }), getSettings(db), listGroups(db)]);
+  const picked = group === undefined ? null : groups.find((g) => g.id === group) ?? null;
+  const options = groups.filter((g) => g.id !== null && g.kind !== "personal").map((g) => ({ id: g.id!, name: g.name }));
   const r = settings.pricing;
   const steps = r.tiers
     .map((t, i) => {
@@ -22,7 +28,10 @@ export default async function PricingPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Pricing</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">Pricing</h1>
+        <GroupPicker groups={options} noneOption={groups.some((g) => g.id === null)} />
+      </div>
       <Explainer id="pricing" title="How pricing works">
         <p>
           <b>Suggested price</b> = {r.percent}% of the Collectr market price, rounded {r.mode === "nearest" ? "to the nearest" : r.mode} step ({steps}),
@@ -30,14 +39,14 @@ export default async function PricingPage() {
         </p>
         <ul>
           <li>Type a price and press <b>Enter</b>: it saves and jumps to the next card. <b>Enter on an empty box</b> takes the suggestion. Arrow keys move up and down; Esc undoes a typo.</li>
-          <li>A price applies to <b>every copy</b> of that card in stock, and puts their stickers in the print queue.</li>
+          <li>A price applies to <b>every copy</b> of that card in stock, and puts their stickers in the print queue. With a <b>group</b> picked (top right), it applies only to that group&apos;s copies, so a consignor&apos;s copy can carry a different price from yours.</li>
           <li>The small % under a price is how it compares to market, so a typo like $1,350 for a $13.50 card stands out.</li>
           <li><b>Accept suggested</b> prices every unpriced card in the current view at once; filter first (one set, raw only) to keep control.</li>
           <li><b>Set all in view to market</b> re-prices every card in the current view, priced or not, to its market price (rounded by your rule). Pick <b>All</b> in the first filter to include priced cards. Changed prices go back in the sticker queue.</li>
           <li><b>Move to PC</b> keeps a card: it leaves pricing, stickers and the POS. Sealed needs no stickers: ring it up with the POS <b>Sealed</b> button (turn sealed stickers on in Settings if you want them).</li>
         </ul>
       </Explainer>
-      <PricingTable rows={rows} rule={r} />
+      <PricingTable key={raw} rows={rows} rule={r} group={raw} canPc={picked?.kind !== "consignment"} />
     </div>
   );
 }

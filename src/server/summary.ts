@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNotNull, sql, type SQL } from "drizzle-o
 import type { Db } from "@/db/client";
 import { events, payments, products, transactionLines, transactions, units } from "@/db/schema";
 import type { PaymentMethod } from "@/lib/settings";
+import type { GroupFilter } from "./groups";
 
 export type EventRow = typeof events.$inferSelect;
 
@@ -53,13 +54,20 @@ export type Summary = {
   byMethod: { method: string; label: string; inCents: number; outCents: number }[];
   cashBoxCents: number | null;
   deals: Deal[];
+  /** one group's view: only its card lines count, payments and the cash box (whole deals) are left out */
+  groupView: boolean;
 };
 
-/** Deals in scope: an event, optionally one local day of it. Voids and voided deals don't count. */
+/**
+ * Deals in scope: an event, optionally one local day of it. Voids and voided deals don't count.
+ * With a group, only card lines of that group's units count (a deal can mix groups); card fees are
+ * split by the group's share of each deal's sales, and payments and the cash box are left out.
+ */
 export async function summarize(
   db: Db,
-  opts: { eventId: string | null; day?: string; tz: string; methods: PaymentMethod[]; startingCashCents?: number },
+  opts: { eventId: string | null; day?: string; tz: string; methods: PaymentMethod[]; startingCashCents?: number; group?: GroupFilter },
 ): Promise<Summary> {
+  const groupView = opts.group !== undefined;
   const where: SQL[] = [sql`${transactions.kind} <> 'void'`];
   if (opts.eventId) where.push(eq(transactions.eventId, opts.eventId));
   else where.push(sql`${transactions.eventId} is null`);
@@ -90,6 +98,7 @@ export async function summarize(
           stickerCents: transactionLines.stickerCents,
           description: transactionLines.description,
           code: units.code,
+          groupId: units.groupId,
           name: products.name,
           setName: products.setName,
           cardNumber: products.cardNumber,
@@ -102,6 +111,23 @@ export async function summarize(
     : [];
   const pays = ids.length ? await db.select().from(payments).where(inArray(payments.transactionId, ids)) : [];
 
+  const inScope = (l: (typeof lines)[number]) => !groupView || (l.code !== null && l.groupId === opts.group);
+  const fee = new Map(opts.methods.map((m) => [m.id, m.feePercent]));
+  const dealFee = (transactionId: string) =>
+    pays
+      .filter((p) => p.transactionId === transactionId && p.direction === "in")
+      .reduce((n, p) => n + Math.round((p.amountCents * (fee.get(p.method) ?? 0)) / 100), 0);
+  // a group's share of a deal's card fees: its part of what went out
+  const feeShare = new Map<string, number>();
+  if (groupView) {
+    for (const t of txns) {
+      const out = lines.filter((l) => l.transactionId === t.id && l.direction === "out");
+      const all = out.reduce((n, l) => n + l.amountCents, 0);
+      const mine = out.filter(inScope).reduce((n, l) => n + l.amountCents, 0);
+      feeShare.set(t.id, all > 0 ? Math.round((dealFee(t.id) * mine) / all) : 0);
+    }
+  }
+
   const deals: Deal[] = txns.map((t) => ({
     id: t.id,
     kind: t.kind,
@@ -109,7 +135,7 @@ export async function summarize(
     note: t.note,
     voided: voided.has(t.id),
     lines: lines
-      .filter((l) => l.transactionId === t.id)
+      .filter((l) => l.transactionId === t.id && inScope(l))
       .map((l) => ({
         direction: l.direction as "in" | "out",
         amountCents: l.amountCents,
@@ -120,11 +146,12 @@ export async function summarize(
         detail: [l.setName, l.cardNumber && `#${l.cardNumber}`].filter(Boolean).join(" "),
       })),
     payments: pays
-      .filter((p) => p.transactionId === t.id)
+      .filter((p) => !groupView && p.transactionId === t.id)
       .map((p) => ({ method: p.method, direction: p.direction as "in" | "out", amountCents: p.amountCents })),
   }));
+  const shown = groupView ? deals.filter((d) => d.lines.length > 0) : deals;
 
-  const live = deals.filter((d) => !d.voided);
+  const live = shown.filter((d) => !d.voided);
   const s: Summary = {
     revenueCents: 0,
     cogsCents: 0,
@@ -138,11 +165,12 @@ export async function summarize(
     cardsTradedIn: 0,
     byMethod: [],
     cashBoxCents: null,
-    deals,
+    deals: shown,
+    groupView,
   };
-  const fee = new Map(opts.methods.map((m) => [m.id, m.feePercent]));
   const by = new Map<string, { inCents: number; outCents: number }>();
   for (const d of live) {
+    if (groupView) s.feesCents += feeShare.get(d.id) ?? 0;
     for (const l of d.lines) {
       if (l.direction === "out") {
         s.revenueCents += l.amountCents;
@@ -173,7 +201,7 @@ export async function summarize(
   s.byMethod = [...by.entries()]
     .map(([method, v]) => ({ method, label: label.get(method) ?? method, ...v }))
     .sort((a, b) => b.inCents - a.inCents);
-  if (opts.startingCashCents !== undefined) {
+  if (opts.startingCashCents !== undefined && !groupView) {
     const cash = by.get("cash") ?? { inCents: 0, outCents: 0 };
     s.cashBoxCents = opts.startingCashCents + cash.inCents - cash.outCents;
   }

@@ -14,7 +14,7 @@ type Sort = "set" | "market-desc" | "market-asc" | "name";
 
 const dollars = (c: number | null) => (c === null ? "" : (c / 100).toFixed(2).replace(/\.00$/, ""));
 
-export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule: PricingRule }) {
+export function PricingTable({ rows: initial, rule, group = "", canPc = true }: { rows: PricingRow[]; rule: PricingRule; group?: string; canPc?: boolean }) {
   const [rows, setRows] = useState(initial);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, "saving" | "error">>({});
@@ -62,7 +62,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
   async function toPc(r: PricingRow) {
     if (!confirm(`Move ${r.inStock === 1 ? "" : `all ${r.inStock} copies of `}${r.name} to your PC? It comes off pricing, stickers and the POS.`)) return;
     try {
-      const res = await moveToPc(r.productId);
+      const res = await moveToPc(r.productId, group);
       const left = r.inStock - res.moved;
       if (left > 0) setRows((rs) => rs.map((x) => (x.productId === r.productId ? { ...x, inStock: left } : x)));
       else setGone((g) => new Set(g).add(r.productId));
@@ -105,7 +105,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
       return rest;
     });
     try {
-      await savePrice(row.productId, cents);
+      await savePrice(row.productId, cents, group);
       setSaving(({ [row.productId]: _, ...rest }) => rest);
     } catch {
       setSaving((s) => ({ ...s, [row.productId]: "error" }));
@@ -120,7 +120,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
     if (todo.length === 0) return;
     if (!confirm(`Set the suggested price on ${todo.length} unpriced cards in this view?`)) return;
     startBulk(async () => {
-      await savePrices(todo);
+      await savePrices(todo, group);
       const by = new Map(todo.map((t) => [t.productId, t.priceCents]));
       setRows((rs) => rs.map((r) => (by.has(r.productId) ? { ...r, priceCents: by.get(r.productId)! } : r)));
     });
@@ -148,7 +148,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
     )
       return;
     startBulk(async () => {
-      await savePrices(todo.map(({ productId, priceCents }) => ({ productId, priceCents })));
+      await savePrices(todo.map(({ productId, priceCents }) => ({ productId, priceCents })), group);
       const by = new Map(todo.map((t) => [t.productId, t.priceCents]));
       setRows((rs) => rs.map((r) => (by.has(r.productId) ? { ...r, priceCents: by.get(r.productId)!, mixedPrices: false } : r)));
     });
@@ -240,6 +240,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
                     </div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
                       {[r.setName, r.cardNumber && `#${r.cardNumber}`, r.variant].filter(Boolean).join(" · ")}
+                      {canPc && (
                       <button
                         type="button"
                         onClick={() => void toPc(r)}
@@ -248,6 +249,7 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
                       >
                         Move to PC
                       </button>
+                      )}
                     </div>
                   </td>
                   <td className="p-2 text-right tabular-nums">{r.inStock}</td>
