@@ -87,6 +87,13 @@ async function existing(db: Db, keys: string[], target: ImportTarget) {
       .where(and(inArray(units.productId, part), eq(units.source, "import"), scope(target)))
       .groupBy(units.productId);
     for (const r of rows) imported.set(r.productId, r.n);
+    // copies imported as this product whose condition was changed here count for it too
+    const moved = await db
+      .select({ productId: units.importedProductId, n: sql<number>`count(*)::int` })
+      .from(units)
+      .where(and(inArray(units.importedProductId, part), sql`${units.importedProductId} <> ${units.productId}`, eq(units.source, "import"), scope(target)))
+      .groupBy(units.importedProductId);
+    for (const r of moved) imported.set(r.productId!, (imported.get(r.productId!) ?? 0) + r.n);
   }
   return { prods, imported };
 }
@@ -94,7 +101,9 @@ async function existing(db: Db, keys: string[], target: ImportTarget) {
 /**
  * What applying would do. A product is matched by its natural key. Units are only ever added:
  * the file's quantity is compared with how many units were EVER imported for the product (sold
- * ones included), so a card sold at a show and still in Collectr is not imported again.
+ * ones included), so a card sold at a show and still in Collectr is not imported again. A copy
+ * whose condition was changed here counts for both the card it was imported as and the one it is
+ * now, so the file matches whether or not Collectr was updated too.
  */
 export async function planImport(db: Db, items: ImportRow[], target: ImportTarget = { kind: "own" }): Promise<ImportPlan> {
   const merged = merge(items);

@@ -5,7 +5,8 @@ import { useMemo, useState, useTransition } from "react";
 import { Button, Select } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import type { GroupUnit } from "@/server/groups";
-import { moveUnitsAction } from "../actions";
+import { CONDITIONS } from "@/lib/condition";
+import { moveUnitsAction, setConditionAction } from "../actions";
 
 const STATUS: Record<string, string> = { in_stock: "In stock", sold: "Sold", traded_out: "Traded", removed: "Removed" };
 
@@ -14,6 +15,7 @@ export function UnitsTable({ units, groups, currentId }: { units: GroupUnit[]; g
   const router = useRouter();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [target, setTarget] = useState<string>("");
+  const [cond, setCond] = useState<string>("");
   const [q, setQ] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -43,6 +45,17 @@ export function UnitsTable({ units, groups, currentId }: { units: GroupUnit[]; g
     });
   }
 
+  function recondition() {
+    start(async () => {
+      const n = await setConditionAction([...picked], cond);
+      const skipped = picked.size - n;
+      setNote(`${n} card${n === 1 ? "" : "s"} now ${cond}, re-priced and queued for new stickers${skipped ? ` (${skipped} skipped: not a raw card in stock, or already ${cond})` : ""}.`);
+      setPicked(new Set());
+      setCond("");
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
@@ -64,6 +77,17 @@ export function UnitsTable({ units, groups, currentId }: { units: GroupUnit[]; g
         </Select>
         <Button disabled={pending || picked.size === 0 || !target} onClick={move}>
           Move
+        </Button>
+        <Select value={cond} onChange={(e) => setCond(e.target.value)} aria-label="Condition">
+          <option value="">Condition...</option>
+          {CONDITIONS.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+        <Button disabled={pending || picked.size === 0 || !cond} onClick={recondition} title="Raw cards in stock: the market and price follow the new condition">
+          Set
         </Button>
       </div>
       {note && <p className="text-green-700 dark:text-green-300">{note}</p>}

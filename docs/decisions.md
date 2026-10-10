@@ -136,3 +136,14 @@ prices). **Sales** counts only that group's card lines, by each unit's current g
 deal can mix groups. Payments and the cash box belong to whole deals, so a group view hides them,
 and card fees are split by the group's share of each deal's sales. **Gains** offers no consignment
 groups (those cards are not mine). The sold and gains CSV exports take the same parameter.
+
+**Changing a card's condition.** Viet wanted to change a card's condition in the app and have the
+market price follow. Condition is part of a product's natural key (as in Collectr), so a change
+moves each in-stock raw copy to the same card in the new condition, made if missing. Its market
+price is the one already known for that condition (a Collectr import), else an estimate from Near
+Mint by Settings percentages (NM 100, LP 85, MP 70, HP 50, DMG 35 by default), recorded in
+`price_history` as `condition`. Viet chose to replace the copy's price with the new suggested price;
+a stickered copy is flagged for reprint because the sticker shows the condition. `units.imported_product_id`
+keeps the product a copy was imported as, and the import counts a moved copy for both that product
+and its current one, so a re-import adds nothing whether or not Collectr was updated too. Known gap:
+an estimated price does not follow later Collectr imports of the Near Mint price.

@@ -7,7 +7,8 @@ import { formatCents, parseDollars } from "@/lib/money";
 import { suggestPrice, type PricingRule } from "@/lib/pricing";
 import type { PricingRow } from "@/server/inventory";
 import Link from "next/link";
-import { moveToPc, savePrice, savePrices } from "./actions";
+import { CONDITIONS, CONDITION_LABEL } from "@/lib/condition";
+import { moveToPc, savePrice, savePrices, setCondition } from "./actions";
 
 type Filter = "all" | "unpriced" | "priced";
 type Sort = "set" | "market-desc" | "market-asc" | "name";
@@ -27,6 +28,8 @@ export function PricingTable({ rows: initial, rule, group = "", canPc = true }: 
   // cards just moved to the PC: hidden here, with a link to where they went
   const [gone, setGone] = useState<Set<string>>(new Set());
   const [pcNote, setPcNote] = useState<{ text: string; groupId: string } | null>(null);
+  // a card whose condition changed is now another product: its row shows that one in place
+  const [alias, setAlias] = useState<Record<string, string>>({});
   const inputs = useRef(new Map<string, HTMLInputElement>());
   // Enter moves focus on, which blurs the row it just saved: that blur must not save again
   const skipBlur = useRef<string | null>(null);
@@ -69,6 +72,25 @@ export function PricingTable({ rows: initial, rule, group = "", canPc = true }: 
       setPcNote({ text: `${r.name}: ${res.moved} cop${res.moved === 1 ? "y" : "ies"} moved to your PC${left > 0 ? ` (${left} consigned stay)` : ""}.`, groupId: res.groupId });
     } catch (e) {
       setPcNote({ text: e instanceof Error ? e.message : "Could not move it", groupId: "" });
+    }
+  }
+
+  async function changeCond(r: PricingRow, to: string) {
+    if (r.inStock > 1 && !confirm(`Change all ${r.inStock} copies of ${r.name} to ${to}? Their price changes to the new suggested price.`)) return;
+    try {
+      const res = await setCondition(r.productId, to, group);
+      const next = res.row;
+      if (!next) return;
+      const existing = rows.some((x) => x.productId === next.productId);
+      setRows((rs) => (existing ? rs.map((x) => (x.productId === next.productId ? next : x)) : [...rs, next]));
+      if (existing) setGone((g) => new Set(g).add(r.productId));
+      else setAlias((a) => ({ ...a, [r.productId]: next.productId }));
+      setPcNote({
+        text: `${r.name}: ${res.moved} cop${res.moved === 1 ? "y" : "ies"} now ${to}, market ${next.marketCents === null ? "unknown" : `${formatCents(next.marketCents)}${res.estimated ? " (estimated from Near Mint)" : ""}`}. Stickers are in the print queue.`,
+        groupId: "",
+      });
+    } catch (e) {
+      setPcNote({ text: e instanceof Error ? e.message : "Could not change the condition", groupId: "" });
     }
   }
 
@@ -228,7 +250,8 @@ export function PricingTable({ rows: initial, rule, group = "", canPc = true }: 
           <tbody>
             {visible.map((v, i) => {
               if (gone.has(v.productId)) return null;
-              const r = rows.find((x) => x.productId === v.productId) ?? v;
+              const id = alias[v.productId] ?? v.productId;
+              const r = rows.find((x) => x.productId === id) ?? v;
               const suggested = suggestPrice(r.marketCents, rule);
               const state = saving[r.productId];
               const badge = badgeFor(r);
@@ -236,7 +259,25 @@ export function PricingTable({ rows: initial, rule, group = "", canPc = true }: 
                 <tr key={r.productId} className="border-t border-zinc-200 dark:border-zinc-800 align-middle">
                   <td className="p-2">
                     <div className="font-medium">
-                      {r.name} {badge && <Badge tone={r.kind === "slab" ? "blue" : "zinc"}>{badge}</Badge>}
+                      {r.name}{" "}
+                      {r.kind === "raw" ? (
+                        <select
+                          aria-label={`Condition of ${r.name}`}
+                          title="Change the condition: the market price and suggested price follow"
+                          value={r.condition}
+                          onChange={(e) => void changeCond(r, e.target.value)}
+                          className="rounded border border-zinc-300 bg-zinc-100 px-1 text-xs font-normal dark:border-zinc-700 dark:bg-zinc-800"
+                        >
+                          {!CONDITIONS.includes(r.condition as never) && <option value={r.condition}>{r.condition || "?"}</option>}
+                          {CONDITIONS.map((c) => (
+                            <option key={c} value={c} title={CONDITION_LABEL[c]}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        badge && <Badge tone={r.kind === "slab" ? "blue" : "zinc"}>{badge}</Badge>
+                      )}
                     </div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
                       {[r.setName, r.cardNumber && `#${r.cardNumber}`, r.variant].filter(Boolean).join(" · ")}

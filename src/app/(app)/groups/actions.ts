@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/auth/guard";
 import { getDb } from "@/db/client";
+import { CONDITIONS } from "@/lib/condition";
+import { changeCondition } from "@/server/condition";
 import { createGroup, deleteGroup, moveUnits, updateGroup } from "@/server/groups";
 
 const GroupInput = z.object({
@@ -38,4 +40,12 @@ export async function moveUnitsAction(unitIds: string[], groupId: string | null)
   const n = await moveUnits(getDb(), z.array(z.string().uuid()).max(5000).parse(unitIds), z.string().uuid().nullable().parse(groupId));
   revalidatePath("/groups", "layout");
   return n;
+}
+
+/** Changes the condition of ticked raw in-stock copies; returns how many changed. */
+export async function setConditionAction(unitIds: string[], condition: string): Promise<number> {
+  await requireSession();
+  const res = await changeCondition(getDb(), { unitIds: z.array(z.string().uuid()).max(5000).parse(unitIds) }, z.enum(CONDITIONS).parse(condition));
+  revalidatePath("/groups", "layout");
+  return res.moved;
 }

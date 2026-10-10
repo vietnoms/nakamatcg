@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button, Card, Input, Select } from "@/components/ui";
 import { formatCents, parseDollars } from "@/lib/money";
+import { CONDITIONS, CONDITION_LABEL } from "@/lib/condition";
 import { suggestPrice, type PricingRule } from "@/lib/pricing";
 import type { AppSettings, PaymentMethod, SettingKey } from "@/lib/settings";
 import type { LabelSettings } from "@/labels/zpl";
@@ -32,6 +33,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
   const [tradeIn, setTradeIn] = useState(settings.tradeInPercent);
   const [restick, setRestick] = useState(settings.restick);
   const [stickerSealed, setStickerSealed] = useState(settings.stickerSealed);
+  const [condPct, setCondPct] = useState(settings.conditionPercents);
 
   const examples = [349, 1249, 8240, 30800];
 
@@ -260,6 +262,29 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
               Save
             </Button>
             {note("paymentMethods")}
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Condition prices">
+        <div className="space-y-3 text-sm">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            When you change a card&apos;s condition (Pricing, or Groups for single copies) and Collectr has no price for that condition yet, its market price
+            is estimated from Near Mint by these percentages. A Collectr price for that condition always wins.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {CONDITIONS.map((c) => (
+              <label key={c} className="flex items-center gap-1" title={CONDITION_LABEL[c]}>
+                {c}
+                <Input type="number" value={condPct[c]} disabled={c === "NM"} onChange={(e) => setCondPct({ ...condPct, [c]: Number(e.target.value) })} className="w-16 text-right" />%
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button disabled={pending} onClick={() => save("conditionPercents", condPct)}>
+              Save
+            </Button>
+            {note("conditionPercents")}
           </div>
         </div>
       </Card>

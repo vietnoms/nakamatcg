@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { DEFAULT_PRICING, DEFAULT_RESTICK } from "./pricing";
 import { DEFAULT_LABEL } from "@/labels/zpl";
+import { DEFAULT_CONDITION_PERCENTS, type ConditionPercents } from "./condition";
 
 const Tier = z.object({ belowCents: z.number().int().positive().nullable(), stepCents: z.number().int().positive() });
 
@@ -27,6 +28,9 @@ export const LabelSchema = z.object({
   foldFrontIn: z.number().min(0.25).max(1.5).default(0.5),
   foldGapIn: z.number().min(0).max(0.5).default(0.08),
 });
+
+const Pct = z.number().min(1).max(200);
+export const ConditionPercentsSchema = z.object({ NM: Pct, LP: Pct, MP: Pct, HP: Pct, DMG: Pct });
 
 export const PaymentMethodSchema = z.object({
   id: z.string().regex(/^[a-z0-9_]+$/),
@@ -55,6 +59,8 @@ export const SETTINGS = {
   activeEventId: { schema: z.string().uuid().nullable(), default: null as string | null },
   /** sealed usually sits on the table unstickered and is rung up by name: off by default */
   stickerSealed: { schema: z.boolean(), default: false as boolean },
+  /** a played copy's market price as a percentage of Near Mint, when no real price for that condition is known */
+  conditionPercents: { schema: ConditionPercentsSchema, default: DEFAULT_CONDITION_PERCENTS as ConditionPercents },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;
