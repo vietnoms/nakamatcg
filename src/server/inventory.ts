@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { labelPrints, products, units } from "@/db/schema";
+import { labelPrints, products, unitGroups, units } from "@/db/schema";
 import { forSale } from "./groups";
 import { getSettings } from "./settings";
 import type { ProductKind } from "@/import/collectr";
@@ -109,6 +109,9 @@ export type LabelQueueItem = {
   condition: string;
   grader: string;
   grade: string;
+  /** the card's group (null: no group), so a batch can be printed for one consignor or portfolio */
+  groupId: string | null;
+  groupName: string | null;
 };
 
 /** In-stock units whose sticker is missing, out of date, or asked to be reprinted. */
@@ -129,9 +132,12 @@ export async function labelQueue(db: Db): Promise<LabelQueueItem[]> {
       condition: products.condition,
       grader: products.grader,
       grade: products.grade,
+      groupId: units.groupId,
+      groupName: unitGroups.name,
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
+    .leftJoin(unitGroups, eq(unitGroups.id, units.groupId))
     .where(and(eq(units.status, "in_stock"), forSale, sticker, isNotNull(units.priceCents), or(sql`${units.stickeredPriceCents} is distinct from ${units.priceCents}`, eq(units.reprint, true))))
     .orderBy(asc(products.setName), asc(products.name), asc(products.cardNumber), asc(units.code));
   return rows.map((r) => ({ ...r, priceCents: r.priceCents!, kind: r.kind as ProductKind }));

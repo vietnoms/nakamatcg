@@ -122,7 +122,10 @@ describe("personal collection (PC)", () => {
     const [umbreon] = (await pricingRows(db)).filter((r) => r.name.startsWith("Umbreon"));
     expect(umbreon!.inStock).toBe(2); // mine and Alex's
     await setProductPrice(db, umbreon!.productId, 150000);
-    expect((await labelQueue(db)).filter((l) => l.name.startsWith("Umbreon"))).toHaveLength(2);
+    const queued = (await labelQueue(db)).filter((l) => l.name.startsWith("Umbreon"));
+    expect(queued).toHaveLength(2);
+    // each sticker knows its group, so a consignor's batch can be printed on its own
+    expect(queued.map((l) => l.groupName).sort()).toEqual(["Alex (consigned)", "Show Stock"]);
     const before = await inventoryCounts(db);
 
     const res = await moveProductToPersonal(db, umbreon!.productId);
