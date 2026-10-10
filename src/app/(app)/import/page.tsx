@@ -33,6 +33,11 @@ export default async function ImportPage() {
           the same card there (same condition first, then any condition), one copy each. Re-importing fills copies imported earlier too.
         </p>
         <p>
+          <b>A vending portfolio?</b> Scan the cards you are bringing into a new Collectr portfolio, export, untick your main
+          portfolio, and tick <b>Move cards I already have</b>: each card moves from its group here into the new portfolio&apos;s group
+          with its cost, instead of being added twice. Cards it can&apos;t find (never imported, or in your PC) are added or left alone.
+        </p>
+        <p>
           <b>Bought someone&apos;s whole collection?</b> Drop their Collectr CSV, pick <b>Bought as a lot</b> and the percentage you
           paid (say 70%): every new copy costs that share of its market price today, so gain and loss starts from what you paid.
         </p>

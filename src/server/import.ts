@@ -21,6 +21,8 @@ export type PlanRow = {
   oldMarketCents: number | null;
   newMarketCents: number | null;
   isNewProduct: boolean;
+  /** copies already here that move into this row's portfolio group (moveExisting) */
+  moved: number;
 };
 
 export type ImportPlan = {
@@ -35,6 +37,8 @@ export type ImportPlan = {
   /** bought as a lot: what the new copies cost in all, and how many have no market price (so no cost) */
   lotCostCents: number | null;
   lotNoMarket: number;
+  /** copies already here moved into their portfolio's group (moveExisting) */
+  moved: number;
 };
 
 /**
@@ -45,6 +49,12 @@ export type ImportOptions = {
   costDonors?: ImportRow[];
   /** bought as a lot (someone's whole collection at 70% of market): every new copy costs this % of its market price */
   lotPercent?: number;
+  /**
+   * The file's portfolios list cards I already have here in other groups (a vending portfolio
+   * scanned in Collectr): move those copies into the portfolio's group, keeping their cost, instead
+   * of adding copies.
+   */
+  moveExisting?: boolean;
 };
 
 /**
@@ -105,6 +115,98 @@ async function existing(db: Db, keys: string[], target: ImportTarget) {
     for (const r of rows) imported.set(r.productId, r.n);
   }
   return { prods, imported };
+}
+
+type MovePlan = {
+  moves: { unitId: string; key: string; portfolio: string; costIfMissing: number | null }[];
+  /** per product key: the new copies still needed after moves, per portfolio */
+  create: Map<string, { portfolio: string; n: number }[]>;
+};
+
+/**
+ * For moveExisting: each portfolio in the file should hold as many copies of a card as it lists.
+ * Copies already in its group count, sold ones too (so a card sold here is not brought back).
+ * The shortfall is met by moving in-stock copies of the same card, in any condition (a fresh scan
+ * is often NM where the original says LP), from my other groups or no group; never from another
+ * portfolio being imported, a PC group or a consignor. Only what is still short becomes new copies,
+ * and never more than the usual count (file quantity minus copies ever imported) allows.
+ */
+async function planMoves(db: Db, items: ImportRow[], merged: Map<string, Merged>, budget: Map<string, number>): Promise<MovePlan> {
+  const out: MovePlan = { moves: [], create: new Map() };
+  const want = new Map<string, Map<string, { q: number; keys: Map<string, number>; cost: number | null }>>();
+  for (const it of items) {
+    const p = it.portfolio.trim();
+    const loose = looseKey(it);
+    const byLoose = want.get(p) ?? new Map();
+    const w = byLoose.get(loose) ?? { q: 0, keys: new Map<string, number>(), cost: null };
+    w.q += it.quantity;
+    w.keys.set(it.key, (w.keys.get(it.key) ?? 0) + it.quantity);
+    w.cost ??= it.costCents;
+    byLoose.set(loose, w);
+    want.set(p, byLoose);
+  }
+
+  // every product that is the same card as one in the file, in any condition
+  const names = [...new Set(items.map((i) => i.name))];
+  const prods: { id: string; key: string; loose: string }[] = [];
+  for (const part of chunks(names)) {
+    const rows = await db.select().from(products).where(inArray(products.name, part));
+    for (const r of rows) prods.push({ id: r.id, key: r.naturalKey, loose: looseKey(r) });
+  }
+  const prodOf = new Map(prods.map((p) => [p.id, p]));
+  const looseWanted = new Set([...want.values()].flatMap((m) => [...m.keys()]));
+  const ids = prods.filter((p) => looseWanted.has(p.loose)).map((p) => p.id);
+  const copies: { id: string; productId: string; groupId: string | null; status: string; createdAt: Date; code: string }[] = [];
+  for (const part of chunks(ids)) {
+    copies.push(
+      ...(await db
+        .select({ id: units.id, productId: units.productId, groupId: units.groupId, status: units.status, createdAt: units.createdAt, code: units.code })
+        .from(units)
+        .where(inArray(units.productId, part))
+        .orderBy(asc(units.createdAt), asc(units.code))),
+    );
+  }
+  const groups = await db.select({ id: unitGroups.id, name: unitGroups.name, kind: unitGroups.kind }).from(unitGroups);
+  const kindOf = new Map(groups.map((g) => [g.id, g.kind]));
+  const groupOf = new Map(groups.filter((g) => g.kind === "own").map((g) => [g.name, g.id]));
+  const importing = new Set([...want.keys()].map((p) => groupOf.get(p)).filter(Boolean));
+  const taken = new Set<string>();
+  const left = new Map(budget);
+
+  for (const [p, byLoose] of want) {
+    const g = groupOf.get(p);
+    for (const [loose, w] of byLoose) {
+      const here = copies.filter((c) => g !== undefined && c.groupId === g && c.status !== "removed" && prodOf.get(c.productId)?.loose === loose).length;
+      let need = w.q - here;
+      if (need <= 0) continue;
+      const from = copies
+        .filter(
+          (c) =>
+            !taken.has(c.id) &&
+            c.status === "in_stock" &&
+            prodOf.get(c.productId)?.loose === loose &&
+            (c.groupId === null || (kindOf.get(c.groupId) === "own" && !importing.has(c.groupId))),
+        )
+        // the same condition first
+        .sort((a, b) => Number(!w.keys.has(prodOf.get(a.productId)!.key)) - Number(!w.keys.has(prodOf.get(b.productId)!.key)));
+      for (const c of from.slice(0, need)) {
+        taken.add(c.id);
+        const key = prodOf.get(c.productId)!.key;
+        out.moves.push({ unitId: c.id, key: w.keys.has(key) ? key : [...w.keys.keys()][0]!, portfolio: p, costIfMissing: w.cost });
+        need--;
+      }
+      // what is still short: new copies, within each key's usual count
+      for (const [key, qty] of w.keys) {
+        if (need <= 0) break;
+        const n = Math.min(need, qty, left.get(key) ?? 0);
+        if (n <= 0) continue;
+        left.set(key, (left.get(key) ?? 0) - n);
+        out.create.set(key, [...(out.create.get(key) ?? []), { portfolio: p, n }]);
+        need -= n;
+      }
+    }
+  }
+  return out;
 }
 
 type CostMatch = {
@@ -189,13 +291,23 @@ export async function planImport(db: Db, items: ImportRow[], target: ImportTarge
       oldMarketCents: p?.marketCents ?? null,
       newMarketCents: m.marketCents,
       isNewProduct: !p,
+      moved: 0,
     });
+  }
+  const moving = target.kind === "own" && opts.moveExisting === true;
+  if (moving) {
+    const mv = await planMoves(db, items, merged, new Map(rows.map((r) => [r.key, r.newUnits])));
+    for (const r of rows) {
+      r.newUnits = (mv.create.get(r.key) ?? []).reduce((n, c) => n + c.n, 0);
+      r.moved = mv.moves.filter((m) => m.key === r.key).length;
+    }
   }
   rows.sort((a, b) => a.setName.localeCompare(b.setName) || a.name.localeCompare(b.name));
   let ungrouped = 0;
   const hasPortfolios = items.some((i) => i.portfolio.trim());
   const known = [...prods.values()].map((p) => p.id);
-  if (target.kind === "own" && hasPortfolios && known.length) {
+  // moving takes copies in no group into their portfolio's group anyway
+  if (target.kind === "own" && hasPortfolios && known.length && !moving) {
     for (const part of chunks(known)) {
       const [r] = await db
         .select({ n: sql<number>`count(*)::int` })
@@ -216,6 +328,7 @@ export async function planImport(db: Db, items: ImportRow[], target: ImportTarge
     newProducts: rows.filter((r) => r.isNewProduct).length,
     priceChanges: rows.filter((r) => !r.isNewProduct && r.newMarketCents !== null && r.newMarketCents !== r.oldMarketCents).length,
     newUnits: rows.reduce((n, r) => n + r.newUnits, 0),
+    moved: rows.reduce((n, r) => n + r.moved, 0),
   };
 }
 
@@ -248,6 +361,7 @@ export type ImportResult = {
   /** copies imported before groups existed that were put in their portfolio's group */
   grouped: number;
   costsMatched: number;
+  moved: number;
 };
 
 /** My group (own or PC) for each portfolio name, made when missing. A name taken by a consignor gets no group. */
@@ -289,6 +403,7 @@ export async function applyImport(
           priceChanges: plan.priceChanges,
           newUnits: plan.newUnits,
           costsMatched: plan.costsMatched,
+          moved: plan.moved,
           lotPercent: opts.lotPercent ?? null,
           lotCostCents: plan.lotCostCents,
         },
@@ -354,6 +469,16 @@ export async function applyImport(
     const groupFor = (portfolio: string | undefined) =>
       target.kind === "consignment" ? target.groupId : (groups.ids.get((portfolio ?? "").trim()) ?? null);
 
+    // copies I already have, moved into the portfolio's group they were scanned into; they keep their cost
+    const moving = target.kind === "own" && opts.moveExisting === true;
+    const mv = moving ? await planMoves(tx as unknown as Db, items, merged, new Map(plan.rows.map((r) => [r.key, r.newUnits]))) : null;
+    for (const m of mv?.moves ?? []) {
+      await tx
+        .update(units)
+        .set({ groupId: groupFor(m.portfolio), costCents: sql`coalesce(${units.costCents}, ${m.costIfMissing})`, updatedAt: sql`now()` })
+        .where(eq(units.id, m.unitId));
+    }
+
     // costs lent by the portfolios left out: for copies already here, then for the new ones
     const lent = await matchCosts(tx as unknown as Db, merged, plan.rows, prods, target, opts.costDonors ?? [], target.kind === "own" ? opts.lotPercent : undefined);
     for (const e of lent.existing) await tx.update(units).set({ costCents: e.costCents, updatedAt: sql`now()` }).where(eq(units.id, e.id));
@@ -366,7 +491,8 @@ export async function applyImport(
       if (r.newUnits === 0) continue;
       const m = merged.get(r.key)!;
       const costs = lent.forNew.get(r.key)!;
-      const portfolios = m.portfolios.slice(r.alreadyImported);
+      // moving: new copies go to the portfolios still short of the card
+      const portfolios = mv ? (mv.create.get(r.key) ?? []).flatMap((x) => Array<string>(x.n).fill(x.portfolio)) : m.portfolios.slice(r.alreadyImported);
       for (let i = 0; i < r.newUnits; i++) {
         newUnits.push({
           code: codes[c++]!,
@@ -383,7 +509,7 @@ export async function applyImport(
 
     // copies imported before groups existed: give them their portfolio's group, oldest first
     let grouped = 0;
-    if (target.kind === "own" && groups.ids.size > 0) {
+    if (target.kind === "own" && groups.ids.size > 0 && !moving) {
       for (const r of plan.rows) {
         if (r.alreadyImported === 0) continue;
         const m = merged.get(r.key)!;
@@ -411,6 +537,7 @@ export async function applyImport(
       newGroups: groups.created,
       grouped,
       costsMatched: lent.matched,
+      moved: mv?.moves.length ?? 0,
     };
   });
 }

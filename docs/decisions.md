@@ -153,3 +153,15 @@ Consignor imports ignore it (their cards carry no cost).
 
 **Condition changes were dropped** (vietnoms/nakamatcg#19, closed): an estimated price for a
 played condition was not accurate enough to be worth it, and Collectr has no API to fetch the real one.
+
+**Moving cards into a scanned portfolio.** Viet makes a vending portfolio in Collectr by scanning
+cards he already imported from his main one, and wants those copies moved into the vending group
+here, not left where they are (the old count saw them as imported already) or added twice. "Move
+cards I already have" (an own-import option, remembered per browser) makes each imported
+portfolio hold as many copies of a card as it lists: copies already in its group count, sold ones
+too, so a card sold here is not brought back; the rest move in, in-stock, from my other own groups
+or no group, never from another portfolio in the same import, a PC group or a consignor, the same
+condition first and then any condition (a scan is often NM where the original says LP). A moved
+copy keeps its cost and sticker code. Only what is still short becomes new copies, never more than
+the usual count allows. It is opt-in because a re-import with it on would pull cards back out of
+groups made by hand in the app.
