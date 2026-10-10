@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Badge, Button, Card } from "@/components/ui";
-import { defaultPrinter, sendZpl, type ZebraDevice } from "@/labels/browser-print";
+import { CANCEL_ALL_ZPL, PLAIN_TEST_ZPL, RESUME_ZPL, defaultPrinter, printerStatusText, sendZpl, type ZebraDevice } from "@/labels/browser-print";
+import { parseHostStatus, statusProblems } from "@/labels/status";
 import { labelDataFor } from "@/labels/label-data";
 import { LabelPreview } from "@/labels/label-preview";
 import { CALIBRATE_ZPL, batchZpl, testLabelZpl, type LabelSettings } from "@/labels/zpl";
@@ -28,6 +29,10 @@ export function LabelsClient({
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initial.map((q) => q.unitId)));
   const [printer, setPrinter] = useState<ZebraDevice | null>(null);
   const [printerError, setPrinterError] = useState<string | null>(null);
+  // the printer's own answer to a status check: null = not checked yet
+  const [health, setHealth] = useState<{ ok: boolean; lines: string[] } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reprintText, setReprintText] = useState("");
@@ -39,6 +44,7 @@ export function LabelsClient({
       const p = await defaultPrinter();
       setPrinter(p);
       if (!p) setPrinterError("Browser Print is running but has no default printer. Open its settings and pick the Zebra.");
+      else void checkPrinter(p);
     } catch (e) {
       setPrinter(null);
       setPrinterError(e instanceof Error ? e.message : String(e));
@@ -74,7 +80,8 @@ export function LabelsClient({
           const gone = new Set(ids);
           setQueue((q) => q.filter((x) => !gone.has(x.unitId)));
         }
-        setProgress(`Printed ${done} stickers.`);
+        setProgress(`Sent ${done} stickers to the printer.`);
+        setTimeout(() => void checkPrinter(), 1500);
       } catch (e) {
         setError(`${e instanceof Error ? e.message : String(e)} Printed ${done} before the error; the rest are still in the queue.`);
         setProgress(null);
@@ -102,11 +109,42 @@ export function LabelsClient({
     });
   }
 
-  async function sendRaw(zpl: string) {
+  /** Asks the printer what state it is in, and says what stops it in plain words. */
+  async function checkPrinter(p: ZebraDevice | null = printer) {
+    if (!p) return;
+    setChecking(true);
+    try {
+      const status = parseHostStatus(await printerStatusText(p));
+      if (!status) {
+        setHealth({
+          ok: false,
+          lines: [
+            "The printer didn't answer the status check, so it can't say what's wrong.",
+            "Look at its light: flashing or red means paused or an error. Make sure the lid is shut and labels are loaded, press the pause/feed button once, then try Plain test.",
+          ],
+        });
+      } else {
+        const problems = statusProblems(status);
+        setHealth({ ok: problems.length === 0, lines: problems });
+      }
+    } catch (e) {
+      setHealth({ ok: false, lines: [e instanceof Error ? e.message : String(e)] });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function sendRaw(zpl: string, what?: string) {
     if (!printer) return;
     setError(null);
+    setSent(null);
     try {
       await sendZpl(printer, zpl);
+      if (what) {
+        setSent(`${what} sent.`);
+        // give it a moment to start, then ask whether anything is holding it
+        setTimeout(() => void checkPrinter(), 1500);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -217,9 +255,28 @@ export function LabelsClient({
       <div className="space-y-4">
         <Card title="Printer">
           {printer ? (
-            <p className="text-sm">
-              <Badge tone="green">ready</Badge> {printer.name} <span className="text-zinc-500 dark:text-zinc-400">({printer.connection})</span>
-            </p>
+            <div className="space-y-2 text-sm">
+              <p>
+                {checking ? (
+                  <Badge>checking...</Badge>
+                ) : health === null ? (
+                  <Badge>found</Badge>
+                ) : health.ok ? (
+                  <Badge tone="green">ready</Badge>
+                ) : (
+                  <Badge tone="red">needs attention</Badge>
+                )}{" "}
+                {printer.name} <span className="text-zinc-500 dark:text-zinc-400">({printer.connection})</span>
+              </p>
+              {health && !health.ok && (
+                <ul className="list-disc space-y-1 rounded-md bg-red-50 py-2 pr-2 pl-6 text-red-900 dark:bg-red-950/40 dark:text-red-100">
+                  {health.lines.map((l) => (
+                    <li key={l}>{l}</li>
+                  ))}
+                </ul>
+              )}
+              {sent && <p className="text-xs text-zinc-500 dark:text-zinc-400">{sent} Nothing came out? Press Check printer.</p>}
+            </div>
           ) : (
             <p className="text-sm text-red-700 dark:text-red-300">{printerError ?? "Looking for the printer..."}</p>
           )}
@@ -230,8 +287,26 @@ export function LabelsClient({
             <Button variant="secondary" onClick={() => void findPrinter()}>
               Find printer
             </Button>
-            <Button variant="secondary" disabled={!printer || !baseUrl} onClick={() => void sendRaw(testLabelZpl(settings, baseUrl))}>
+            <Button variant="secondary" disabled={!printer || !baseUrl} onClick={() => void sendRaw(testLabelZpl(settings, baseUrl), "Test sticker")}>
               Test sticker
+            </Button>
+            <Button variant="secondary" disabled={!printer || checking} onClick={() => void checkPrinter()}>
+              {checking ? "Checking..." : "Check printer"}
+            </Button>
+            <Button variant="secondary" disabled={!printer} onClick={() => void sendRaw(RESUME_ZPL, "Resume")}>
+              Resume
+            </Button>
+            <Button variant="secondary" disabled={!printer} onClick={() => void sendRaw(PLAIN_TEST_ZPL, "Plain test")} title="The simplest possible label, ignoring your sticker settings">
+              Plain test
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={!printer}
+              onClick={() => {
+                if (confirm("Clear stuck jobs? The printer forgets every sticker it is holding; the queue here is unchanged, so you can print them again.")) void sendRaw(CANCEL_ALL_ZPL, "Clear");
+              }}
+            >
+              Clear stuck jobs
             </Button>
             <Button
               variant="secondary"
