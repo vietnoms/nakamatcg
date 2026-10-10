@@ -126,6 +126,34 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
     });
   }
 
+  /** Every card in view (priced or not) to its market price, rounded by the pricing rule. */
+  function repriceAllToMarket() {
+    const current = new Map(rows.map((r) => [r.productId, r]));
+    const inView = visible.filter((v) => !gone.has(v.productId)).map((v) => current.get(v.productId) ?? v);
+    const todo = inView
+      .map((r) => ({ productId: r.productId, priceCents: suggestPrice(r.marketCents, rule), was: r.priceCents, mixed: r.mixedPrices }))
+      .filter((p): p is { productId: string; priceCents: number; was: number | null; mixed: boolean } => p.priceCents !== null && (p.priceCents !== p.was || p.mixed));
+    const noMarket = inView.filter((r) => r.marketCents === null).length;
+    if (todo.length === 0) {
+      alert(noMarket ? `Nothing to change: the ${noMarket} card(s) without a market price stay as they are.` : "Every card in view is already at market.");
+      return;
+    }
+    const repriced = todo.filter((t) => t.was !== null).length;
+    if (
+      !confirm(
+        `Set ${todo.length} card${todo.length === 1 ? "" : "s"} in this view to market (${rule.percent}% of market, rounded as in Settings)?` +
+          (repriced ? `\n\n${repriced} already had a price; their stickers go back in the print queue.` : "") +
+          (noMarket ? `\n${noMarket} without a market price are left alone.` : ""),
+      )
+    )
+      return;
+    startBulk(async () => {
+      await savePrices(todo.map(({ productId, priceCents }) => ({ productId, priceCents })));
+      const by = new Map(todo.map((t) => [t.productId, t.priceCents]));
+      setRows((rs) => rs.map((r) => (by.has(r.productId) ? { ...r, priceCents: by.get(r.productId)!, mixedPrices: false } : r)));
+    });
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -157,6 +185,9 @@ export function PricingTable({ rows: initial, rule }: { rows: PricingRow[]; rule
         </Select>
         <Button variant="secondary" onClick={acceptAllSuggested} disabled={bulkPending}>
           {bulkPending ? "Saving..." : "Accept suggested for unpriced in view"}
+        </Button>
+        <Button variant="secondary" onClick={repriceAllToMarket} disabled={bulkPending} title="Every card in view, priced or not, to its market price (rounded by your pricing rule)">
+          Set all in view to market
         </Button>
       </div>
       <div className="flex items-center gap-3">

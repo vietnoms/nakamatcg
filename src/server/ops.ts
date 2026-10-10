@@ -9,7 +9,7 @@ import { freshCodes } from "./import";
 export type OpResult = { id: string; status: "applied" | "duplicate" | "error"; error?: string; conflicts?: string[] };
 
 /** Find a product by its natural key, or create it (a card bought at the show that we never had). */
-async function productFor(tx: Db, p: ProductInput): Promise<string> {
+export async function productFor(tx: Db, p: ProductInput): Promise<string> {
   const base = {
     game: "",
     name: p.name,

@@ -31,6 +31,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
   const [methods, setMethods] = useState<PaymentMethod[]>(settings.paymentMethods);
   const [tradeIn, setTradeIn] = useState(settings.tradeInPercent);
   const [restick, setRestick] = useState(settings.restick);
+  const [stickerSealed, setStickerSealed] = useState(settings.stickerSealed);
 
   const examples = [349, 1249, 8240, 30800];
 
@@ -196,6 +197,19 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
               </p>
             </>
           )}
+          <label className="col-span-2 flex items-center gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            <input
+              type="checkbox"
+              checked={stickerSealed}
+              onChange={(e) => {
+                setStickerSealed(e.target.checked);
+                save("stickerSealed", e.target.checked);
+              }}
+            />
+            Print stickers for sealed products too
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">(off: sealed is rung up with the POS Sealed button)</span>
+            {note("stickerSealed")}
+          </label>
           <div className="col-span-2 flex items-center gap-3">
             <Button disabled={pending} onClick={() => save("label", label)}>
               Save

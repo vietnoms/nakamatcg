@@ -1,15 +1,20 @@
 import { Explainer } from "@/components/explainer";
 import { getDb } from "@/db/client";
 import { listGroups } from "@/server/groups";
+import { getSettings } from "@/server/settings";
+import { AddStock } from "./add-stock";
 import { ImportClient } from "./import-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImportPage() {
-  const consignors = (await listGroups(getDb())).flatMap((g) => (g.id && g.kind === "consignment" ? [{ id: g.id, name: g.name, feeBps: g.feeBps ?? 0 }] : []));
+  const db = getDb();
+  const [groups, settings] = await Promise.all([listGroups(db), getSettings(db)]);
+  const consignors = groups.flatMap((g) => (g.id && g.kind === "consignment" ? [{ id: g.id, name: g.name, feeBps: g.feeBps ?? 0 }] : []));
+  const mine = groups.flatMap((g) => (g.id && g.kind !== "consignment" ? [{ id: g.id, name: g.name }] : []));
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Import from Collectr</h1>
+      <h1 className="text-2xl font-semibold">Import and add stock</h1>
       <Explainer id="import" title="How importing works">
         <ol>
           <li>In Collectr, export your portfolio as CSV (it downloads as something like &ldquo;collectr port.csv&rdquo;).</li>
@@ -33,6 +38,7 @@ export default async function ImportPage() {
         </p>
       </Explainer>
       <ImportClient consignors={consignors} />
+      <AddStock groups={mine} rule={settings.pricing} />
     </div>
   );
 }

@@ -98,3 +98,16 @@ stock counts, the paper inventory list, and re-pricing; the phone gets them as `
 cannot be rung up. **Move to PC** on a Pricing row moves my in-stock copies of that card (never
 consigned ones) into the first personal group, making "PC" if there is none, and clears their price.
 PC cards stay in gain and loss: they are still mine. To sell one after all, move it to another group.
+
+**Sealed product.** Sealed was already a product kind (Collectr import, Pricing filter, POS Buy).
+What was missing: a way to add stock bought outside Collectr and outside a show (Import page, **Add
+stock by hand**: catalog search or photo, qty, cost each, price each, group; units get
+`source = 'manual'`), and a way to sell it without stickers. Sealed now stays out of the sticker
+queue unless Settings turns sealed stickers on (a reprint asked for by code still prints). The POS
+**Sealed** button lists in-stock sealed by product with a quantity, and the cart shows copies of one
+product at one price on one line. Each copy is still its own unit with its own code, so the
+one-unit-per-copy rule and the sale ops are unchanged.
+
+**Set all in view to market.** A Pricing button that re-prices every card in the current view,
+priced or not, to `suggestPrice` (market times the pricing rule's percent, rounded by its tiers),
+so "market" means the same thing as the suggested column. Cards with no market price are left alone.

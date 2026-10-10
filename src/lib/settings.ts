@@ -53,6 +53,8 @@ export const SETTINGS = {
   /** what a trade-in card is worth to me, as a percentage of its market price */
   tradeInPercent: { schema: z.number().min(0).max(200), default: 80 as number },
   activeEventId: { schema: z.string().uuid().nullable(), default: null as string | null },
+  /** sealed usually sits on the table unstickered and is rung up by name: off by default */
+  stickerSealed: { schema: z.boolean(), default: false as boolean },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;
