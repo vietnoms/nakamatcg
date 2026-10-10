@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge, Button, Card, Select } from "@/components/ui";
 import { CANCEL_ALL_ZPL, PLAIN_TEST_ZPL, RESUME_ZPL, defaultPrinter, printerStatusText, sendZpl, type ZebraDevice } from "@/labels/browser-print";
 import { parseHostStatus, statusProblems } from "@/labels/status";
 import { labelDataFor } from "@/labels/label-data";
@@ -55,13 +55,28 @@ export function LabelsClient({
     void findPrinter();
   }, []);
 
-  const chosen = useMemo(() => queue.filter((q) => selected.has(q.unitId)), [queue, selected]);
   const [search, setSearch] = useState("");
+  // "" = every group; "none" = cards in no group; else a group id
+  const [group, setGroup] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const groups = useMemo(() => {
+    const by = new Map<string, { id: string; name: string; n: number }>();
+    for (const q of queue) {
+      const id = q.groupId ?? "none";
+      const g = by.get(id) ?? { id, name: q.groupName ?? "No group", n: 0 };
+      g.n++;
+      by.set(id, g);
+    }
+    return [...by.values()].sort((a, b) => (a.id === "none" ? 1 : b.id === "none" ? -1 : a.name.localeCompare(b.name)));
+  }, [queue]);
   const shown = useMemo(() => {
     const n = search.trim().toLowerCase();
-    return n ? queue.filter((x) => `${x.code} ${x.name} ${x.setName} ${x.cardNumber}`.toLowerCase().includes(n)) : queue;
-  }, [queue, search]);
+    return queue.filter(
+      (x) => (!group || (x.groupId ?? "none") === group) && (!n || `${x.code} ${x.name} ${x.setName} ${x.cardNumber}`.toLowerCase().includes(n)),
+    );
+  }, [queue, search, group]);
+  // print what is ticked AND on screen: a group or search filter never prints cards it hides
+  const chosen = useMemo(() => shown.filter((q) => selected.has(q.unitId)), [shown, selected]);
   const labels = useMemo(() => chosen.map((q) => ({ unitId: q.unitId, data: labelDataFor(q, pricedOn) })), [chosen, pricedOn]);
 
   function print() {
@@ -157,12 +172,24 @@ export function LabelsClient({
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
       <div className="space-y-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Find in the queue: code, name, set"
-          className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
-        />
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Find in the queue: code, name, set"
+            className="min-w-0 flex-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
+          />
+          {groups.length > 1 && (
+            <Select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Group">
+              <option value="">All groups ({queue.length})</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.n})
+                </option>
+              ))}
+            </Select>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={print} disabled={pending || !printer || labels.length === 0 || !baseUrl}>
             {pending && progress ? progress : `Print ${labels.length} sticker${labels.length === 1 ? "" : "s"}`}
@@ -227,6 +254,7 @@ export function LabelsClient({
                   <td className="p-2 font-mono text-xs">{q.code}</td>
                   <td className="p-2">
                     {q.name} <span className="text-xs text-zinc-500 dark:text-zinc-400">{[q.setName, q.cardNumber && `#${q.cardNumber}`].filter(Boolean).join(" ")}</span>
+                    {!group && q.groupName && <span className="ml-1 rounded bg-zinc-100 px-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">{q.groupName}</span>}
                   </td>
                   <td className="p-2 text-right tabular-nums">{formatCents(q.priceCents)}</td>
                   <td className="p-2">
