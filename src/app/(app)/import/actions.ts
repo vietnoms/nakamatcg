@@ -28,6 +28,8 @@ const Input = z.object({
       }),
     ])
     .default({ kind: "own" }),
+  /** bought as a lot: every new copy costs this % of market (own cards only) */
+  lotPercent: z.number().min(1).max(200).nullable().default(null),
 });
 type ImportInput = z.infer<typeof Input>;
 
@@ -35,7 +37,8 @@ function items(input: ImportInput) {
   const { rows } = parseCsv(input.text);
   const { items, skipped } = parseRows(rows, input.mapping as Mapping);
   const keep = input.portfolios ? new Set(input.portfolios) : null;
-  return { items: keep ? items.filter((i) => keep.has(i.portfolio)) : items, skipped };
+  // the portfolios left out still lend their costs to the same cards scanned into the ones brought
+  return { items: keep ? items.filter((i) => keep.has(i.portfolio)) : items, costDonors: keep ? items.filter((i) => !keep.has(i.portfolio)) : [], skipped };
 }
 
 /** A new consignor has no cards yet: preview against a group nobody has. */
@@ -58,8 +61,8 @@ export async function previewImport(raw: z.input<typeof Input>): Promise<ImportP
   await requireSession();
   const input = Input.parse(raw);
   if (input.mapping.name === null) throw new Error("Pick the column that holds the card name.");
-  const { items: list, skipped } = items(input);
-  return { ...(await planImport(getDb(), list, await target(input.owner, false))), skipped };
+  const { items: list, costDonors, skipped } = items(input);
+  return { ...(await planImport(getDb(), list, await target(input.owner, false), { costDonors, lotPercent: input.lotPercent ?? undefined })), skipped };
 }
 
 export async function commitImport(raw: z.input<typeof Input>): Promise<ImportResult & { groupId: string | null }> {
@@ -67,7 +70,8 @@ export async function commitImport(raw: z.input<typeof Input>): Promise<ImportRe
   const input = Input.parse(raw);
   if (input.mapping.name === null) throw new Error("Pick the column that holds the card name.");
   const t = await target(input.owner, true);
-  const res = { ...(await applyImport(getDb(), items(input).items, input.filename, t)), groupId: t.kind === "consignment" ? t.groupId : null };
+  const { items: list, costDonors } = items(input);
+  const res = { ...(await applyImport(getDb(), list, input.filename, t, { costDonors, lotPercent: input.lotPercent ?? undefined })), groupId: t.kind === "consignment" ? t.groupId : null };
   revalidatePath("/", "layout");
   return res;
 }

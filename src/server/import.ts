@@ -4,6 +4,7 @@ import type { Db } from "@/db/client";
 import { imports, priceHistory, products, unitGroups, units } from "@/db/schema";
 import type { ImportRow, ProductKind } from "@/import/collectr";
 import { badgeFor } from "@/import/collectr";
+import { costBook, looseKey, takeCost } from "@/import/costs";
 import { newUnitCode } from "@/lib/codes";
 
 /** One product in the file: its rows merged (the same card can appear in several portfolios). */
@@ -29,6 +30,21 @@ export type ImportPlan = {
   newUnits: number;
   /** own import: copies already here in no group, that this file's portfolios can group */
   ungrouped: number;
+  /** copies with no cost that take one from the same card in a portfolio left out of the import */
+  costsMatched: number;
+  /** bought as a lot: what the new copies cost in all, and how many have no market price (so no cost) */
+  lotCostCents: number | null;
+  lotNoMarket: number;
+};
+
+/**
+ * Portfolios left out of an import can still lend what I paid: a display portfolio scanned in
+ * Collectr has no costs, but the same cards sit in my main portfolio with theirs.
+ */
+export type ImportOptions = {
+  costDonors?: ImportRow[];
+  /** bought as a lot (someone's whole collection at 70% of market): every new copy costs this % of its market price */
+  lotPercent?: number;
 };
 
 /**
@@ -91,12 +107,69 @@ async function existing(db: Db, keys: string[], target: ImportTarget) {
   return { prods, imported };
 }
 
+type CostMatch = {
+  /** per product key: the costs of its new copies, in file order, gaps filled where a donor had one */
+  forNew: Map<string, (number | null)[]>;
+  /** copies already here (in this file's portfolios' groups, in stock) with no cost, and the cost they take */
+  existing: { id: string; costCents: number }[];
+  matched: number;
+};
+
+async function matchCosts(
+  db: Db,
+  merged: Map<string, Merged>,
+  rows: { key: string; alreadyImported: number; newUnits: number }[],
+  prods: Map<string, { id: string }>,
+  target: ImportTarget,
+  donors: ImportRow[],
+  lotPercent?: number,
+): Promise<CostMatch> {
+  const out: CostMatch = { forNew: new Map(), existing: [], matched: 0 };
+  for (const r of rows) {
+    const m = merged.get(r.key)!;
+    // a lot's price replaces the seller's costs in the file: what they paid is not what I paid
+    const lot = lotPercent === undefined || m.marketCents === null ? null : Math.round((m.marketCents * lotPercent) / 100);
+    out.forNew.set(r.key, lotPercent !== undefined ? Array<number | null>(r.newUnits).fill(lot) : m.costs.slice(r.alreadyImported, r.alreadyImported + r.newUnits));
+  }
+  if (target.kind !== "own" || donors.length === 0) return out;
+  const book = costBook(donors);
+  const loose = (key: string) => looseKey(merged.get(key)!.first);
+
+  // copies imported earlier first: they were scanned first
+  const names = [...new Set([...merged.values()].flatMap((m) => m.portfolios).map((n) => n.trim()).filter(Boolean))];
+  const keyOf = new Map([...prods].map(([key, p]) => [p.id, key]));
+  if (names.length && keyOf.size) {
+    const groups = db.select({ id: unitGroups.id }).from(unitGroups).where(and(inArray(unitGroups.name, names), eq(unitGroups.kind, "own")));
+    for (const part of chunks([...keyOf.keys()])) {
+      const bare = await db
+        .select({ id: units.id, productId: units.productId })
+        .from(units)
+        .where(and(inArray(units.productId, part), isNull(units.costCents), eq(units.status, "in_stock"), inArray(units.groupId, groups)))
+        .orderBy(asc(units.createdAt), asc(units.code));
+      for (const u of bare) {
+        const key = keyOf.get(u.productId)!;
+        const cost = takeCost(book, key, loose(key));
+        if (cost !== null) out.existing.push({ id: u.id, costCents: cost });
+      }
+    }
+  }
+  for (const [key, costs] of out.forNew) {
+    out.forNew.set(
+      key,
+      costs.map((c) => (c !== null ? c : takeCost(book, key, loose(key)))),
+    );
+    out.matched += costs.filter((c, i) => c === null && out.forNew.get(key)![i] !== null).length;
+  }
+  out.matched += out.existing.length;
+  return out;
+}
+
 /**
  * What applying would do. A product is matched by its natural key. Units are only ever added:
  * the file's quantity is compared with how many units were EVER imported for the product (sold
  * ones included), so a card sold at a show and still in Collectr is not imported again.
  */
-export async function planImport(db: Db, items: ImportRow[], target: ImportTarget = { kind: "own" }): Promise<ImportPlan> {
+export async function planImport(db: Db, items: ImportRow[], target: ImportTarget = { kind: "own" }, opts: ImportOptions = {}): Promise<ImportPlan> {
   const merged = merge(items);
   const { prods, imported } = await existing(db, [...merged.keys()], target);
   const rows: PlanRow[] = [];
@@ -131,8 +204,14 @@ export async function planImport(db: Db, items: ImportRow[], target: ImportTarge
       ungrouped += r?.n ?? 0;
     }
   }
+  const lot = target.kind === "own" ? opts.lotPercent : undefined;
+  const costs = await matchCosts(db, merged, rows, prods, target, opts.costDonors ?? [], lot);
+  const lotCosts = [...costs.forNew.values()].flat();
   return {
     ungrouped,
+    costsMatched: costs.matched,
+    lotCostCents: lot === undefined ? null : lotCosts.reduce<number>((n, c) => n + (c ?? 0), 0),
+    lotNoMarket: lot === undefined ? 0 : lotCosts.filter((c) => c === null).length,
     rows,
     newProducts: rows.filter((r) => r.isNewProduct).length,
     priceChanges: rows.filter((r) => !r.isNewProduct && r.newMarketCents !== null && r.newMarketCents !== r.oldMarketCents).length,
@@ -168,6 +247,7 @@ export type ImportResult = {
   newGroups: number;
   /** copies imported before groups existed that were put in their portfolio's group */
   grouped: number;
+  costsMatched: number;
 };
 
 /** My group (own or PC) for each portfolio name, made when missing. A name taken by a consignor gets no group. */
@@ -188,8 +268,14 @@ async function portfolioGroups(db: Db, names: string[]): Promise<{ ids: Map<stri
   return { ids, created: missing.length };
 }
 
-export async function applyImport(db: Db, items: ImportRow[], filename: string, target: ImportTarget = { kind: "own" }): Promise<ImportResult> {
-  const plan = await planImport(db, items, target);
+export async function applyImport(
+  db: Db,
+  items: ImportRow[],
+  filename: string,
+  target: ImportTarget = { kind: "own" },
+  opts: ImportOptions = {},
+): Promise<ImportResult> {
+  const plan = await planImport(db, items, target, opts);
   const merged = merge(items);
 
   return db.transaction(async (tx) => {
@@ -198,7 +284,14 @@ export async function applyImport(db: Db, items: ImportRow[], filename: string, 
       .values({
         filename,
         rowCount: items.length,
-        summary: { newProducts: plan.newProducts, priceChanges: plan.priceChanges, newUnits: plan.newUnits },
+        summary: {
+          newProducts: plan.newProducts,
+          priceChanges: plan.priceChanges,
+          newUnits: plan.newUnits,
+          costsMatched: plan.costsMatched,
+          lotPercent: opts.lotPercent ?? null,
+          lotCostCents: plan.lotCostCents,
+        },
       })
       .returning({ id: imports.id });
     if (!imp) throw new Error("import row not created");
@@ -261,6 +354,10 @@ export async function applyImport(db: Db, items: ImportRow[], filename: string, 
     const groupFor = (portfolio: string | undefined) =>
       target.kind === "consignment" ? target.groupId : (groups.ids.get((portfolio ?? "").trim()) ?? null);
 
+    // costs lent by the portfolios left out: for copies already here, then for the new ones
+    const lent = await matchCosts(tx as unknown as Db, merged, plan.rows, prods, target, opts.costDonors ?? [], target.kind === "own" ? opts.lotPercent : undefined);
+    for (const e of lent.existing) await tx.update(units).set({ costCents: e.costCents, updatedAt: sql`now()` }).where(eq(units.id, e.id));
+
     // new units, one per physical copy, each with the cost and group from its own CSV row
     const codes = await freshCodes(tx as unknown as Db, plan.newUnits);
     let c = 0;
@@ -268,7 +365,7 @@ export async function applyImport(db: Db, items: ImportRow[], filename: string, 
     for (const r of plan.rows) {
       if (r.newUnits === 0) continue;
       const m = merged.get(r.key)!;
-      const costs = m.costs.slice(r.alreadyImported);
+      const costs = lent.forNew.get(r.key)!;
       const portfolios = m.portfolios.slice(r.alreadyImported);
       for (let i = 0; i < r.newUnits; i++) {
         newUnits.push({
@@ -313,6 +410,7 @@ export async function applyImport(db: Db, items: ImportRow[], filename: string, 
       newUnits: plan.newUnits,
       newGroups: groups.created,
       grouped,
+      costsMatched: lent.matched,
     };
   });
 }

@@ -136,3 +136,20 @@ prices). **Sales** counts only that group's card lines, by each unit's current g
 deal can mix groups. Payments and the cash box belong to whole deals, so a group view hides them,
 and card fees are split by the group's share of each deal's sales. **Gains** offers no consignment
 groups (those cards are not mine). The sold and gains CSV exports take the same parameter.
+
+**Costs for a display portfolio.** Viet scans the cards he brings into a new Collectr portfolio
+(faster than moving them in Collectr), so those rows have no cost while the same cards sit in his
+main portfolio with theirs. Portfolios left unticked on import now lend their costs: each copy with
+no cost takes the cost of one copy of the same card there, the same condition first (a fresh scan
+is often NM where the original says LP), then any condition; each donor copy is lent once.
+Copies already imported with no cost, in stock, in the imported portfolios' groups, are filled on
+re-import, before new copies. Sold copies are not touched: their cost was fixed on the append-only
+sale lines.
+
+**Collections bought as a lot.** "Bought as a lot at N% of market" on an own import costs every new
+copy at N% of its market price in the file (rounded per copy), replacing the costs in the file,
+which are the seller's. Copies with no market price get no cost; the preview counts them.
+Consignor imports ignore it (their cards carry no cost).
+
+**Condition changes were dropped** (vietnoms/nakamatcg#19, closed): an estimated price for a
+played condition was not accurate enough to be worth it, and Collectr has no API to fetch the real one.
