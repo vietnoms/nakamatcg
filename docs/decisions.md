@@ -111,3 +111,10 @@ one-unit-per-copy rule and the sale ops are unchanged.
 **Set all in view to market.** A Pricing button that re-prices every card in the current view,
 priced or not, to `suggestPrice` (market times the pricing rule's percent, rounded by its tiers),
 so "market" means the same thing as the suggested column. Cards with no market price are left alone.
+
+**Printer status.** Calibrate (`~JC`) acts at once, even on a paused printer; stickers (`^XA...^XZ`)
+wait while the printer is paused, its head is open, or it expects a ribbon, so "calibrate works,
+printing does nothing" looked like a bug in the page. The Stickers page now asks the printer for
+its host status (`~HS`, read back through Browser Print's `read`) after finding it and after each
+print, and says what stops it in plain words. It has Resume (`~PS`), Clear stuck jobs (`~JA`) and
+a Plain test label that ignores the sticker settings, to tell a printer problem from a layout one.
