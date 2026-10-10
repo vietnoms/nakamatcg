@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { medianCents, normalizeNumber, numberTotal, pickPrinting, rankCandidates, tidyName, tidySet, type CardRead, type CatalogCandidate } from "./match";
+import { GAMES, isGame, medianCents, normalizeNumber, numberTotal, pickPrinting, rankCandidates, tidyName, tidySet, type CardRead, type CatalogCandidate } from "./match";
 
 const read = (o: Partial<CardRead>): CardRead => ({ game: "pokemon", name: "", setName: "", setCode: "", number: "", finish: "", graded: null, ...o });
 const cand = (o: Partial<CatalogCandidate>): CatalogCandidate => ({
@@ -27,6 +27,14 @@ describe("normalizeNumber", () => {
   it("leaves One Piece numbers whole", () => {
     expect(normalizeNumber("OP01-003")).toBe("OP01-003");
     expect(normalizeNumber("op05-119")).toBe("OP05-119");
+  });
+
+  it("matches Riftbound numbers with or without the set code", () => {
+    expect(normalizeNumber("OGN-066/298")).toBe("66");
+    expect(normalizeNumber("ogn-066")).toBe("66");
+    expect(normalizeNumber("066/298")).toBe("66");
+    expect(normalizeNumber("SFD-120a")).toBe("120A");
+    expect(normalizeNumber("OGN-300")).toBe("300");
   });
 
   it("reads the printed total", () => {
@@ -86,5 +94,14 @@ describe("tidy names for the form", () => {
     expect(tidyName("Monkey.D.Luffy (Alternate Art)", "OP01-003")).toBe("Monkey.D.Luffy (Alternate Art)");
     expect(tidySet("SV03: Obsidian Flames")).toBe("Obsidian Flames");
     expect(tidySet("Romance Dawn")).toBe("Romance Dawn");
+  });
+});
+
+describe("games", () => {
+  it("knows Pokemon, One Piece and Riftbound", () => {
+    expect(GAMES.map((g) => g.id)).toEqual(["pokemon", "one_piece", "riftbound"]);
+    expect(isGame("riftbound")).toBe(true);
+    expect(isGame("magic")).toBe(false);
+    expect(isGame(null)).toBe(false);
   });
 });

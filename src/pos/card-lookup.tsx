@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { productKind } from "@/import/collectr";
-import { tidyName, tidySet, type CatalogCandidate, type Game } from "@/lookup/match";
+import { GAMES, tidyName, tidySet, type CatalogCandidate, type Game } from "@/lookup/match";
 import type { LookupResult } from "@/server/identify";
 import { money } from "./parts";
 import { usePersistentState } from "./persist";
@@ -177,12 +177,7 @@ export function CardLookup({ onFill }: { onFill: (f: LookupFill) => void }) {
     <div className="space-y-2 rounded-md bg-zinc-50 dark:bg-zinc-950 p-2">
       <div className="flex items-center gap-2">
         <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-0.5 text-xs">
-          {(
-            [
-              ["pokemon", "Pokémon"],
-              ["one_piece", "One Piece"],
-            ] as const
-          ).map(([g, label]) => (
+          {GAMES.map(({ id: g, label }) => (
             <button key={g} type="button" onClick={() => setGame(g)} className={clsx("rounded px-2 py-1", game === g ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950" : "text-zinc-500 dark:text-zinc-400")}>
               {label}
             </button>

@@ -10,7 +10,7 @@ let close: () => Promise<void>;
 beforeAll(async () => ({ db, close } = await testDb()));
 afterAll(async () => close());
 
-/** A tiny fake tcgcsv.com: one Pokemon set, one One Piece set. */
+/** A tiny fake tcgcsv.com: one Pokemon set, one One Piece set, one Riftbound set. */
 function fakeTcgcsv(market = 71.2): Fetcher {
   const data: Record<string, unknown> = {
     "https://tcgcsv.com/tcgplayer/3/groups": { results: [{ groupId: 23228, name: "SV03: Obsidian Flames" }] },
@@ -33,6 +33,11 @@ function fakeTcgcsv(market = 71.2): Fetcher {
       results: [{ productId: 453000, name: "Monkey.D.Luffy (Alternate Art)", cleanName: "MonkeyDLuffy Alternate Art", imageUrl: "", groupId: 3188, extendedData: [{ name: "Number", value: "OP01-003" }] }],
     },
     "https://tcgcsv.com/tcgplayer/68/3188/prices": { results: [{ productId: 453000, subTypeName: "Normal", marketPrice: 1550, lowPrice: 1400 }] },
+    "https://tcgcsv.com/tcgplayer/89/groups": { results: [{ groupId: 24344, name: "Origins" }] },
+    "https://tcgcsv.com/tcgplayer/89/24344/products": {
+      results: [{ productId: 652000, name: "Jinx - Loose Cannon", cleanName: "Jinx Loose Cannon", imageUrl: "", groupId: 24344, extendedData: [{ name: "Number", value: "OGN-202/298" }] }],
+    },
+    "https://tcgcsv.com/tcgplayer/89/24344/prices": { results: [{ productId: 652000, subTypeName: "Normal", marketPrice: 12.4, lowPrice: 10 }] },
   };
   return async (url) => {
     if (!(url in data)) throw new Error(`unexpected ${url}`);
@@ -47,28 +52,29 @@ describe("syncCatalog", () => {
 
   it("stores one row per product and printing, with market prices in cents", async () => {
     const res = await syncCatalog(db, fakeTcgcsv());
-    expect(res).toEqual({ items: 5, sets: 2 });
+    expect(res).toEqual({ items: 6, sets: 3 });
     const rows = await db.select().from(catalogItems);
     expect(rows.find((r) => r.productId === 509640)).toMatchObject({ game: "pokemon", numberKey: "223", marketCents: 7120, rarity: "Special Illustration Rare", setName: "SV03: Obsidian Flames" });
     expect(rows.find((r) => r.productId === 509999)).toMatchObject({ subType: "", marketCents: null });
     expect(rows.find((r) => r.productId === 453000)).toMatchObject({ game: "one_piece", numberKey: "OP01-003", marketCents: 155000 });
+    expect(rows.find((r) => r.productId === 652000)).toMatchObject({ game: "riftbound", numberKey: "202", marketCents: 1240, setName: "Origins" });
   });
 
   it("a second sync updates prices in place and records the run", async () => {
     await syncCatalog(db, fakeTcgcsv(80));
     const rows = await db.select().from(catalogItems);
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
     expect(rows.find((r) => r.productId === 509640)?.marketCents).toBe(8000);
     const s = await catalogStatus(db);
-    expect(s.items).toBe(5);
-    expect(s.lastOk?.items).toBe(5);
+    expect(s.items).toBe(6);
+    expect(s.lastOk?.items).toBe(6);
   });
 
   it("records a failed run without losing the catalog", async () => {
     await expect(syncCatalog(db, async () => { throw new Error("tcgcsv down"); })).rejects.toThrow("tcgcsv down");
     const s = await catalogStatus(db);
     expect(s.last?.error).toBe("tcgcsv down");
-    expect(s.items).toBe(5);
+    expect(s.items).toBe(6);
   });
 });
 
@@ -84,6 +90,16 @@ describe("finding cards", () => {
     const read = { game: "one_piece" as const, name: "Monkey.D.Luffy", setName: "", setCode: "", number: "OP01-003", finish: "", graded: { company: "CGC", grade: "10 Pristine", cert: "" } };
     const ranked = rankCandidates(read, await candidatesFor(db, read));
     expect(ranked[0]?.productId).toBe(453000);
+  });
+
+  it("matches Riftbound by its card number, with or without the set code", async () => {
+    for (const number of ["OGN-202/298", "202/298"]) {
+      const read = { game: "riftbound" as const, name: "Jinx", setName: "", setCode: "", number, finish: "", graded: null };
+      const ranked = rankCandidates(read, await candidatesFor(db, read));
+      expect(ranked[0]?.productId).toBe(652000);
+    }
+    expect((await searchCatalog(db, "jinx", "riftbound"))[0]?.productId).toBe(652000);
+    expect(await searchCatalog(db, "jinx", "pokemon")).toEqual([]);
   });
 
   it("typed search matches name, set, and number, priciest first", async () => {

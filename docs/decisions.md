@@ -118,3 +118,11 @@ printing does nothing" looked like a bug in the page. The Stickers page now asks
 its host status (`~HS`, read back through Browser Print's `read`) after finding it and after each
 print, and says what stops it in plain words. It has Resume (`~PS`), Clear stuck jobs (`~JA`) and
 a Plain test label that ignores the sticker settings, to tell a printer problem from a layout one.
+
+**Riftbound.** Added as a third game for the price catalog and the photo lookup (Viet,
+2026-10-10). Inventory, stickers, the POS and reports never cared about the game. The catalog syncs
+TCGplayer category 89 from tcgcsv.com (found in other open-source projects' code; tcgcsv.com was
+unreachable from the build sandbox, so the first nightly sync confirms it). Riftbound numbers such as
+`OGN-066/298` normalize to `66`, so a photo read with the set code matches a catalog number without
+it, and the other way round. CardSight tries a `riftbound` segment; if it has none, photos fall back
+to Claude, whose prompt now describes Riftbound cards.
