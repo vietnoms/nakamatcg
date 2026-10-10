@@ -30,6 +30,8 @@ const Input = z.object({
     .default({ kind: "own" }),
   /** bought as a lot: every new copy costs this % of market (own cards only) */
   lotPercent: z.number().min(1).max(200).nullable().default(null),
+  /** cards already here in another group: move them into the portfolio's group instead of adding copies */
+  moveExisting: z.boolean().default(false),
 });
 type ImportInput = z.infer<typeof Input>;
 
@@ -62,7 +64,7 @@ export async function previewImport(raw: z.input<typeof Input>): Promise<ImportP
   const input = Input.parse(raw);
   if (input.mapping.name === null) throw new Error("Pick the column that holds the card name.");
   const { items: list, costDonors, skipped } = items(input);
-  return { ...(await planImport(getDb(), list, await target(input.owner, false), { costDonors, lotPercent: input.lotPercent ?? undefined })), skipped };
+  return { ...(await planImport(getDb(), list, await target(input.owner, false), { costDonors, lotPercent: input.lotPercent ?? undefined, moveExisting: input.moveExisting })), skipped };
 }
 
 export async function commitImport(raw: z.input<typeof Input>): Promise<ImportResult & { groupId: string | null }> {
@@ -71,7 +73,7 @@ export async function commitImport(raw: z.input<typeof Input>): Promise<ImportRe
   if (input.mapping.name === null) throw new Error("Pick the column that holds the card name.");
   const t = await target(input.owner, true);
   const { items: list, costDonors } = items(input);
-  const res = { ...(await applyImport(getDb(), list, input.filename, t, { costDonors, lotPercent: input.lotPercent ?? undefined })), groupId: t.kind === "consignment" ? t.groupId : null };
+  const res = { ...(await applyImport(getDb(), list, input.filename, t, { costDonors, lotPercent: input.lotPercent ?? undefined, moveExisting: input.moveExisting })), groupId: t.kind === "consignment" ? t.groupId : null };
   revalidatePath("/", "layout");
   return res;
 }

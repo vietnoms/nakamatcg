@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Select } from "@/components/ui";
 import { FIELDS, FIELD_LABELS, detectMapping, parseCsv, type Field, type Mapping } from "@/import/collectr";
@@ -13,6 +13,7 @@ type Preview = ImportPlan & { skipped: { line: number; reason: string; name: str
 type Result = ImportResult & { groupId: string | null };
 
 const EXCLUDED_KEY = "nk:import:excluded-portfolios";
+const MOVE_KEY = "nk:import:move-existing";
 function loadExcluded(): string[] {
   try {
     return JSON.parse(localStorage.getItem(EXCLUDED_KEY) ?? "[]") as string[];
@@ -49,6 +50,20 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
   const [lotPct, setLotPct] = useState("70");
   const lotNum = Number(lotPct);
   const lotReady = !lot || (lotPct.trim() !== "" && Number.isFinite(lotNum) && lotNum >= 1 && lotNum <= 200);
+  // a vending portfolio scanned in Collectr: move the copies I already have into its group
+  const [moveExisting, setMoveExisting] = useState(false);
+  useEffect(() => {
+    try {
+      setMoveExisting(localStorage.getItem(MOVE_KEY) === "1");
+    } catch {}
+  }, []);
+  function chooseMove(on: boolean) {
+    setPreview(null);
+    setMoveExisting(on);
+    try {
+      localStorage.setItem(MOVE_KEY, on ? "1" : "0");
+    } catch {}
+  }
   const feePct = Number(newFee);
   const ownerReady =
     owner === "own" || consignorId !== "new" || (newName.trim() !== "" && newFee.trim() !== "" && Number.isFinite(feePct) && feePct >= 0 && feePct <= 100);
@@ -98,7 +113,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
         : consignorId !== "new"
           ? { kind: "consignment" as const, groupId: consignorId }
           : { kind: "newConsignor" as const, name: newName.trim(), feeBps: percentToBps(feePct), minFeeCents: parseDollars(newMin) ?? 0 };
-    return { text: file!.text, filename: file!.name, mapping: mapping!, portfolios, owner: who, lotPercent: owner === "own" && lot ? lotNum : null };
+    return { text: file!.text, filename: file!.name, mapping: mapping!, portfolios, owner: who, lotPercent: owner === "own" && lot ? lotNum : null, moveExisting: owner === "own" && moveExisting };
   }
 
   function runPreview() {
@@ -287,6 +302,19 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
               </p>
             </div>
           )}
+          {owner === "own" && (
+            <label className="mb-4 flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5" checked={moveExisting} onChange={(e) => chooseMove(e.target.checked)} />
+              <span>
+                <b>Move cards I already have</b> into the group of the portfolio they are in here
+                <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                  For a portfolio you scanned in Collectr from cards you already imported (say, Vending): each card moves from its
+                  current group, keeping its cost, instead of being added again. Only cards it can&apos;t find become new copies.
+                  Leave your main portfolio unticked below. Remembered for next time.
+                </span>
+              </span>
+            </label>
+          )}
           {allPortfolios.length > 1 && (
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium">Which portfolios are you bringing?</p>
@@ -387,6 +415,11 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
                 {preview.lotNoMarket > 0 && <span className="text-amber-700 dark:text-amber-300"> ({preview.lotNoMarket} copies have no market price, so no cost)</span>}
               </span>
             )}
+            {preview.moved > 0 && (
+              <span>
+                <b>{preview.moved}</b> copies you already have move into their portfolio&apos;s group
+              </span>
+            )}
             {preview.costsMatched > 0 && (
               <span>
                 <b>{preview.costsMatched}</b> copies with no cost take it from the same card in your other portfolios
@@ -406,6 +439,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
                   <th className="p-2">Set</th>
                   <th className="p-2 text-right">In file</th>
                   <th className="p-2 text-right">New copies</th>
+                  {preview.moved > 0 && <th className="p-2 text-right">Moved</th>}
                   <th className="p-2 text-right">Market</th>
                 </tr>
               </thead>
@@ -420,6 +454,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
                     </td>
                     <td className="p-2 text-right tabular-nums">{r.quantityInFile}</td>
                     <td className="p-2 text-right tabular-nums">{r.newUnits || ""}</td>
+                    {preview.moved > 0 && <td className="p-2 text-right tabular-nums">{r.moved || ""}</td>}
                     <td className="p-2 text-right tabular-nums">
                       {!r.isNewProduct && r.oldMarketCents !== r.newMarketCents && r.oldMarketCents !== null && (
                         <span className="mr-1 text-zinc-400 dark:text-zinc-500 line-through">{formatCents(r.oldMarketCents)}</span>
@@ -446,7 +481,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
           <div className="mt-4">
             <Button
               onClick={runImport}
-              disabled={pending || (preview.newUnits === 0 && preview.newProducts === 0 && preview.priceChanges === 0 && preview.ungrouped === 0 && preview.costsMatched === 0)}
+              disabled={pending || (preview.newUnits === 0 && preview.newProducts === 0 && preview.priceChanges === 0 && preview.ungrouped === 0 && preview.costsMatched === 0 && preview.moved === 0)}
             >
               {pending ? "Importing..." : "Import"}
             </Button>
@@ -460,6 +495,7 @@ export function ImportClient({ consignors }: { consignors: Consignor[] }) {
             Imported: {result.newProducts} new products, {result.newUnits} new copies, {result.priceChanges} price changes
             {result.newGroups > 0 && `, ${result.newGroups} new groups`}
             {result.grouped > 0 && `, ${result.grouped} earlier copies grouped`}
+            {result.moved > 0 && `, ${result.moved} copies moved into their portfolio's group`}
             {result.costsMatched > 0 && `, ${result.costsMatched} costs filled from your other portfolios`}.{" "}
             <Link href="/pricing" className="font-medium underline">
               Go price them
