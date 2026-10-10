@@ -33,6 +33,11 @@ export default async function LabelsPage() {
           won&apos;t scan), condition or grade, the date it was priced, and the name and set. Put it on the toploader or sleeve,
           not the card. No Browser Print? <b>Download .zpl</b> and send the file to the printer, then <b>Mark printed</b>.
         </p>
+        <p>
+          <b>Choosing what to print:</b> filter the queue by group, set, type, why it is queued, or a value range on the sticker price,
+          market price or what you paid (say, from $5 to skip cheap cards), then <b>Tick all shown</b> or <b>Untick all shown</b>. Print,
+          Download and Mark printed only ever act on ticked cards that are on screen.
+        </p>
       </Explainer>
       {!baseUrl && (
         <p className="rounded-md bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">

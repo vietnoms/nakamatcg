@@ -112,6 +112,9 @@ export type LabelQueueItem = {
   /** the card's group (null: no group), so a batch can be printed for one consignor or portfolio */
   groupId: string | null;
   groupName: string | null;
+  /** for the queue's value filters */
+  marketCents: number | null;
+  costCents: number | null;
 };
 
 /** In-stock units whose sticker is missing, out of date, or asked to be reprinted. */
@@ -134,6 +137,8 @@ export async function labelQueue(db: Db): Promise<LabelQueueItem[]> {
       grade: products.grade,
       groupId: units.groupId,
       groupName: unitGroups.name,
+      marketCents: products.marketCents,
+      costCents: units.costCents,
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
