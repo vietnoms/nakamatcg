@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import { type NextRequest } from "next/server";
 import { getDb } from "@/db/client";
+import { parseGroupParam } from "@/server/groups";
 import { getSettings } from "@/server/settings";
 import { summarize } from "@/server/summary";
 
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest) {
 
   const db = getDb();
   const tz = process.env.APP_TZ ?? "America/Los_Angeles";
-  const s = await summarize(db, { eventId, day, tz, methods: (await getSettings(db)).paymentMethods });
+  const group = parseGroupParam(req.nextUrl.searchParams.get("group"));
+  const s = await summarize(db, { eventId, day, tz, methods: (await getSettings(db)).paymentMethods, group });
   const rows = s.deals
     .filter((d) => !d.voided)
     .flatMap((d) =>

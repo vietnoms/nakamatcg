@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNotNull, max, notInArray, sql } from "drizzle
 import type { Db } from "@/db/client";
 import { events, products, transactionLines, transactions, unitGroups, units } from "@/db/schema";
 import { badgeFor, type ProductKind } from "@/import/collectr";
+import { inGroup, type GroupFilter } from "./groups";
 
 /** Copies of one card in stock at one cost: what they cost me and what they are worth now. */
 export type UnrealizedRow = {
@@ -44,7 +45,7 @@ const pct = (gain: number, cost: number) => (cost > 0 ? Math.round((gain * 10000
  * Unrealized gain or loss on what is in stock: current market price (the last Collectr import)
  * minus what each copy cost. Copies of one card at different costs are separate rows.
  */
-export async function unrealizedGains(db: Db): Promise<Unrealized> {
+export async function unrealizedGains(db: Db, opts: { group?: GroupFilter } = {}): Promise<Unrealized> {
   const rows = await db
     .select({
       productId: products.id,
@@ -62,7 +63,7 @@ export async function unrealizedGains(db: Db): Promise<Unrealized> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(and(eq(units.status, "in_stock"), isNotNull(units.costCents), isNotNull(products.marketCents), mine))
+    .where(and(eq(units.status, "in_stock"), isNotNull(units.costCents), isNotNull(products.marketCents), mine, inGroup(opts.group)))
     .groupBy(products.id, units.costCents);
 
   const [left] = await db
@@ -73,7 +74,7 @@ export async function unrealizedGains(db: Db): Promise<Unrealized> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(and(eq(units.status, "in_stock"), mine));
+    .where(and(eq(units.status, "in_stock"), mine, inGroup(opts.group)));
 
   return {
     rows: rows.map((r) => {
@@ -126,7 +127,7 @@ export type RealizedRow = {
 };
 
 /** Realized gain or loss on cards sold or traded away. Voided deals are left out. */
-export async function realizedGains(db: Db, opts: { eventId?: string | null } = {}): Promise<RealizedRow[]> {
+export async function realizedGains(db: Db, opts: { eventId?: string | null; group?: GroupFilter } = {}): Promise<RealizedRow[]> {
   const voided = db
     .select({ id: transactions.voidsTransactionId })
     .from(transactions)
@@ -139,6 +140,8 @@ export async function realizedGains(db: Db, opts: { eventId?: string | null } = 
     notInArray(transactions.id, sql`(${voided})`),
     mine,
   ];
+  const g = inGroup(opts.group);
+  if (g) conds.push(g);
   if (opts.eventId !== undefined) {
     conds.push(opts.eventId === null ? sql`${transactions.eventId} is null` : eq(transactions.eventId, opts.eventId));
   }

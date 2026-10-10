@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Badge, Card, Stat } from "@/components/ui";
 import { Explainer } from "@/components/explainer";
+import { GroupPicker } from "@/components/group-picker";
 import { getDb } from "@/db/client";
 import { formatCents } from "@/lib/money";
+import { listGroups, parseGroupParam } from "@/server/groups";
 import { getSettings } from "@/server/settings";
 import { eventDays, listEvents, summarize } from "@/server/summary";
 import { EventControls } from "./event-controls";
@@ -11,11 +13,12 @@ export const dynamic = "force-dynamic";
 
 const KIND: Record<string, string> = { sale: "Sale", buy: "Buy", trade: "Trade" };
 
-export default async function SummaryPage({ searchParams }: { searchParams: Promise<{ event?: string; day?: string }> }) {
+export default async function SummaryPage({ searchParams }: { searchParams: Promise<{ event?: string; day?: string; group?: string }> }) {
   const sp = await searchParams;
   const db = getDb();
   const tz = process.env.APP_TZ ?? "America/Los_Angeles";
-  const [settings, events] = await Promise.all([getSettings(db), listEvents(db)]);
+  const group = parseGroupParam(sp.group);
+  const [settings, events, groups] = await Promise.all([getSettings(db), listEvents(db), listGroups(db)]);
   const eventId = sp.event === "none" ? null : (sp.event ?? settings.activeEventId ?? events[0]?.id ?? null);
   const event = events.find((e) => e.id === eventId) ?? null;
   const days = await eventDays(db, eventId, tz);
@@ -26,12 +29,15 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
     tz,
     methods: settings.paymentMethods,
     startingCashCents: event && !day ? event.startingCashCents : undefined,
+    group,
   });
+  const groupParam = group === undefined ? "" : (group ?? "none");
   const time = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit" });
   const q = (o: { event?: string | null; day?: string }) => {
     const p = new URLSearchParams();
     p.set("event", o.event === undefined ? (eventId ?? "none") : (o.event ?? "none"));
     if (o.day) p.set("day", o.day);
+    if (groupParam) p.set("group", groupParam);
     return `/summary?${p}`;
   };
 
@@ -42,7 +48,10 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
           <h1 className="text-2xl font-semibold">Sales</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{event ? `${event.name}, ${event.startsOn} to ${event.endsOn}` : "Deals recorded without a show"}</p>
         </div>
-        <EventControls events={events.map((e) => ({ id: e.id, name: e.name, startsOn: e.startsOn, startingCashCents: e.startingCashCents }))} activeId={settings.activeEventId} currentId={eventId} />
+        <div className="flex flex-wrap items-end gap-2">
+          <GroupPicker groups={groups.filter((g) => g.id !== null).map((g) => ({ id: g.id!, name: g.name }))} noneOption={groups.some((g) => g.id === null)} />
+          <EventControls events={events.map((e) => ({ id: e.id, name: e.name, startsOn: e.startsOn, startingCashCents: e.startingCashCents }))} activeId={settings.activeEventId} currentId={eventId} />
+        </div>
       </div>
 
       <Explainer id="sales" title="What these numbers mean">
@@ -51,6 +60,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
           <li><b>Bought</b> and <b>Traded in</b>: what you paid or credited for cards that came in; they are now stock with that cost.</li>
           <li><b>Cash box</b>: your starting cash plus cash taken minus cash paid out. Count the box at the end of the day and compare; a difference means a sale was missed or entered with the wrong method.</li>
           <li>A <b>voided</b> deal stays listed (greyed) but counts for nothing; its cards went back into stock. Void from the phone&apos;s History tab or with Undo right after a sale.</li>
+          <li>Pick a <b>group</b> to see only its cards: a deal can mix groups, so only that group&apos;s card lines count, card fees are split by its share of each deal, and payments and the cash box (which belong to whole deals) are hidden.</li>
           <li>Each phone files deals under the <b>active show</b>. Make a show the active one before the show starts so its phones pick it up.</li>
         </ul>
       </Explainer>
@@ -64,7 +74,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
             {d}
           </Link>
         ))}
-        <a href={`/api/export/sold?event=${eventId ?? "none"}${day ? `&day=${day}` : ""}`} className="ml-auto rounded-full border border-zinc-300 dark:border-zinc-700 px-3 py-1">
+        <a href={`/api/export/sold?event=${eventId ?? "none"}${day ? `&day=${day}` : ""}${groupParam ? `&group=${groupParam}` : ""}`} className="ml-auto rounded-full border border-zinc-300 dark:border-zinc-700 px-3 py-1">
           Export sold cards (CSV)
         </a>
       </div>
@@ -80,6 +90,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
         <Stat label="Traded in" value={formatCents(s.tradeInCents)} hint={`${s.cardsTradedIn} cards`} />
       </div>
 
+      {!s.groupView && (
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="By payment method">
           <table className="w-full text-sm">
@@ -119,11 +130,15 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
           </Card>
         )}
       </div>
+      )}
 
       <Card title={`Deals (${s.deals.length})`}>
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {s.deals.map((d) => {
-            const net = d.payments.reduce((n, p) => n + (p.direction === "in" ? p.amountCents : -p.amountCents), 0);
+            // a group's view has no payments: its net is what its cards brought in less what came in for it
+            const net = s.groupView
+              ? d.lines.reduce((n, l) => n + (l.direction === "out" ? l.amountCents : -l.amountCents), 0)
+              : d.payments.reduce((n, p) => n + (p.direction === "in" ? p.amountCents : -p.amountCents), 0);
             return (
               <li key={d.id} className={`py-2 text-sm ${d.voided ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-2">
@@ -131,7 +146,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
                   {d.voided && <Badge tone="red">voided</Badge>}
                   <span className="text-zinc-500 dark:text-zinc-400">{time.format(d.occurredAt)}</span>
                   <span className="ml-auto tabular-nums">
-                    {d.payments.map((p) => `${settings.paymentMethods.find((m) => m.id === p.method)?.label ?? p.method} ${p.direction === "out" ? "-" : ""}${formatCents(p.amountCents)}`).join(" + ") || "no money"}
+                    {d.payments.map((p) => `${settings.paymentMethods.find((m) => m.id === p.method)?.label ?? p.method} ${p.direction === "out" ? "-" : ""}${formatCents(p.amountCents)}`).join(" + ") || (s.groupView ? "" : "no money")}
                   </span>
                   <span className={`w-24 text-right font-medium tabular-nums ${net >= 0 ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>{formatCents(net)}</span>
                 </div>

@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { labelPrints, products, unitGroups, units } from "@/db/schema";
-import { forSale } from "./groups";
+import { forSale, inGroup, type GroupFilter } from "./groups";
 import { getSettings } from "./settings";
 import type { ProductKind } from "@/import/collectr";
 
@@ -32,8 +32,8 @@ async function stickerable(db: Db) {
   return (await getSettings(db)).stickerSealed ? sql`true` : sql`(${products.kind} <> 'sealed' or ${units.reprint})`;
 }
 
-/** Products with at least one copy in stock, for the pricing page. */
-export async function pricingRows(db: Db): Promise<PricingRow[]> {
+/** Products with at least one copy in stock (in one group, if given), for the pricing page. */
+export async function pricingRows(db: Db, opts: { group?: GroupFilter } = {}): Promise<PricingRow[]> {
   const rows = await db
     .select({
       productId: products.id,
@@ -55,7 +55,7 @@ export async function pricingRows(db: Db): Promise<PricingRow[]> {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(and(eq(units.status, "in_stock"), forSale))
+    .where(and(eq(units.status, "in_stock"), forSale, inGroup(opts.group)))
     .groupBy(products.id)
     .orderBy(asc(products.setName), asc(products.name), asc(products.cardNumber));
 
@@ -81,17 +81,17 @@ export async function pricingRows(db: Db): Promise<PricingRow[]> {
   });
 }
 
-/** Sets the price of every in-stock copy of a product that is for sale (not in the PC). A changed price puts the copy in the label queue. */
-export async function setProductPrice(db: Db, productId: string, priceCents: number | null): Promise<void> {
+/** Sets the price of every in-stock copy of a product that is for sale (not in the PC), in one group if given. A changed price puts the copy in the label queue. */
+export async function setProductPrice(db: Db, productId: string, priceCents: number | null, group?: GroupFilter): Promise<void> {
   await db
     .update(units)
     .set({ priceCents, updatedAt: sql`now()` })
-    .where(and(eq(units.productId, productId), eq(units.status, "in_stock"), forSale));
+    .where(and(eq(units.productId, productId), eq(units.status, "in_stock"), forSale, inGroup(group)));
 }
 
-export async function setProductPrices(db: Db, prices: { productId: string; priceCents: number }[]): Promise<void> {
+export async function setProductPrices(db: Db, prices: { productId: string; priceCents: number }[], group?: GroupFilter): Promise<void> {
   await db.transaction(async (tx) => {
-    for (const p of prices) await setProductPrice(tx as unknown as Db, p.productId, p.priceCents);
+    for (const p of prices) await setProductPrice(tx as unknown as Db, p.productId, p.priceCents, group);
   });
 }
 
@@ -219,7 +219,7 @@ export async function unitByCode(db: Db, code: string): Promise<UnitView | null>
 }
 
 /** Stock counts for the home page. Cards in the personal collection are not stock. */
-export async function inventoryCounts(db: Db) {
+export async function inventoryCounts(db: Db, opts: { group?: GroupFilter } = {}) {
   const sticker = await stickerable(db);
   const [r] = await db
     .select({
@@ -231,6 +231,6 @@ export async function inventoryCounts(db: Db) {
     })
     .from(units)
     .innerJoin(products, eq(products.id, units.productId))
-    .where(forSale);
+    .where(and(forSale, inGroup(opts.group)));
   return r ?? { inStock: 0, unpriced: 0, needLabels: 0, sold: 0, stockValueCents: 0 };
 }

@@ -1,8 +1,10 @@
 import clsx from "clsx";
 import Link from "next/link";
+import { GroupPicker } from "@/components/group-picker";
 import { Stat } from "@/components/ui";
 import { getDb } from "@/db/client";
 import { formatCents } from "@/lib/money";
+import { listGroups, parseGroupParam } from "@/server/groups";
 import { inventoryCounts } from "@/server/inventory";
 import { getSettings } from "@/server/settings";
 import { listEvents } from "@/server/summary";
@@ -11,9 +13,12 @@ export const dynamic = "force-dynamic";
 
 type Step = { done: boolean; title: string; href: string; action: string; detail: string };
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
   const db = getDb();
-  const [c, settings, events] = await Promise.all([inventoryCounts(db), getSettings(db), listEvents(db)]);
+  const group = parseGroupParam((await searchParams).group);
+  const [c, settings, events, groups] = await Promise.all([inventoryCounts(db, { group }), getSettings(db), listEvents(db), listGroups(db)]);
+  // links keep the picked group, so "Price 12" opens pricing for the same group
+  const g = group === undefined ? "" : `?group=${group ?? "none"}`;
   const active = events.find((e) => e.id === settings.activeEventId);
 
   const steps: Step[] = [
@@ -27,14 +32,14 @@ export default async function Home() {
     {
       done: c.inStock > 0 && c.unpriced === 0,
       title: "Price every card",
-      href: "/pricing",
+      href: `/pricing${g}`,
       action: c.unpriced ? `Price ${c.unpriced}` : "Pricing",
       detail: "Type a price and press Enter, or press Enter on an empty box to take the suggested price.",
     },
     {
       done: c.inStock > 0 && c.unpriced === 0 && c.needLabels === 0,
       title: "Print the stickers",
-      href: "/labels",
+      href: `/labels${g}`,
       action: c.needLabels ? `Print ${c.needLabels}` : "Stickers",
       detail: "On the laptop with the Zebra. Print one test sticker and scan it with your phone first.",
     },
@@ -56,15 +61,18 @@ export default async function Home() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Nakama Cards</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Inventory, price stickers, and show sales in one place.</p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">Nakama Cards</h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Inventory, price stickers, and show sales in one place.</p>
+        </div>
+        <GroupPicker groups={groups.filter((x) => x.id !== null && x.kind !== "personal").map((x) => ({ id: x.id!, name: x.name }))} noneOption={groups.some((x) => x.id === null)} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="In stock" value={c.inStock} hint={`${c.sold} sold so far`} />
-        <Stat label="Unpriced" value={c.unpriced} hint={c.unpriced ? <Link className="underline" href="/pricing">Price them</Link> : "All priced"} />
-        <Stat label="Stickers to print" value={c.needLabels} hint={c.needLabels ? <Link className="underline" href="/labels">Print</Link> : "Up to date"} />
+        <Stat label="Unpriced" value={c.unpriced} hint={c.unpriced ? <Link className="underline" href={`/pricing${g}`}>Price them</Link> : "All priced"} />
+        <Stat label="Stickers to print" value={c.needLabels} hint={c.needLabels ? <Link className="underline" href={`/labels${g}`}>Print</Link> : "Up to date"} />
         <Stat label="Stock at sticker price" value={formatCents(c.stockValueCents)} />
       </div>
 
@@ -98,7 +106,7 @@ export default async function Home() {
           { href: "/pos", title: "POS (phone)", text: "Scan sticker QR codes into a cart, take payment, buy and trade cards. Works with no signal and syncs later." },
           { href: "/summary", title: "Sales", text: "Totals per show and day, money by payment method, what should be in the cash box, and every deal." },
           { href: "/gains", title: "Gain and loss", text: "Every card against what it cost you: in stock at today's market price, sold at what it brought in. Exports for your P&L." },
-          { href: "/labels", title: "Stickers", text: "Print new stickers, reprint changed prices or damaged stickers by code." },
+          { href: `/labels${g}`, title: "Stickers", text: "Print new stickers, reprint changed prices or damaged stickers by code." },
         ].map((f) => (
           <Link key={f.href} href={f.href} prefetch={f.href === "/pos" ? false : undefined} className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 hover:border-zinc-400 dark:hover:border-zinc-500">
             <div className="text-sm font-semibold">{f.title}</div>
@@ -108,7 +116,7 @@ export default async function Home() {
       </section>
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Phone battery or signal trouble at the show? Print the <Link className="underline" href="/inventory/print">paper backup list</Link> beforehand.
+        Phone battery or signal trouble at the show? Print the <Link className="underline" href={`/inventory/print${g}`}>paper backup list</Link> beforehand.
       </p>
     </div>
   );

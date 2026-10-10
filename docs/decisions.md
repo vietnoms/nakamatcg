@@ -126,3 +126,13 @@ unreachable from the build sandbox, so the first nightly sync confirms it). Rift
 `OGN-066/298` normalize to `66`, so a photo read with the set code matches a catalog number without
 it, and the other way round. CardSight tries a `riftbound` segment; if it has none, photos fall back
 to Claude, whose prompt now describes Riftbound cards.
+
+**Separate by group everywhere.** Viet wanted every page to split by group. One `?group=` address
+parameter (a group id, or `none` for cards in no group) drives a shared Group picker on Home,
+Pricing, Sales, Gains and the paper list; Stickers reads it as its starting filter. In a group view,
+**Pricing** prices only that group's copies, so a consignor's copy can carry a different price from
+mine (Move to PC is hidden for consignment groups; PC groups are not offered, as they have no
+prices). **Sales** counts only that group's card lines, by each unit's current group, since one
+deal can mix groups. Payments and the cash box belong to whole deals, so a group view hides them,
+and card fees are split by the group's share of each deal's sales. **Gains** offers no consignment
+groups (those cards are not mine). The sold and gains CSV exports take the same parameter.

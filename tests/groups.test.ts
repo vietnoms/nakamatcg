@@ -7,10 +7,11 @@ import type { Db } from "@/db/client";
 import { unitGroups, units } from "@/db/schema";
 import { detectMapping, parseCsv, parseRows } from "@/import/collectr";
 import { realizedGains, unrealizedGains } from "@/server/gains";
-import { consignmentReport, createGroup, deleteGroup, getGroup, groupUnits, listGroups, moveProductToPersonal, moveUnits } from "@/server/groups";
+import { consignmentReport, createGroup, deleteGroup, getGroup, groupUnits, listGroups, moveProductToPersonal, moveUnits, parseGroupParam } from "@/server/groups";
 import { applyImport, planImport } from "@/server/import";
 import { inventoryCounts, labelQueue, pricingRows, setProductPrice } from "@/server/inventory";
 import { posSnapshot } from "@/server/pos";
+import { summarize } from "@/server/summary";
 import { applyOps } from "@/server/ops";
 import { testDb } from "./db";
 
@@ -153,5 +154,72 @@ describe("personal collection (PC)", () => {
 
   it("does not add a PC copy back on re-import", async () => {
     expect((await planImport(db, parse(csv))).newUnits).toBe(0);
+  });
+});
+
+describe("separating by group", () => {
+  it("reads ?group=: none for cards in no group, anything unknown for every group", () => {
+    const id = randomUUID();
+    expect(parseGroupParam(id)).toBe(id);
+    expect(parseGroupParam("none")).toBeNull();
+    expect(parseGroupParam("")).toBeUndefined();
+    expect(parseGroupParam("x' or 1=1")).toBeUndefined();
+  });
+
+  it("prices one group's copies without touching another's", async () => {
+    const show = await groupNamed("Show Stock");
+    const alex = await groupNamed("Alex (consigned)");
+    const [card] = (await pricingRows(db, { group: alex.id })).filter((r) => r.inStock > 0 && !r.name.startsWith("Umbreon"));
+    const mineBefore = (await pricingRows(db, { group: show.id })).find((r) => r.productId === card!.productId);
+    await setProductPrice(db, card!.productId, 4321, alex.id);
+    expect((await pricingRows(db, { group: alex.id })).find((r) => r.productId === card!.productId)?.priceCents).toBe(4321);
+    expect((await pricingRows(db, { group: show.id })).find((r) => r.productId === card!.productId)?.priceCents).toBe(mineBefore?.priceCents);
+    expect(await pricingRows(db, { group: null })).toHaveLength(0);
+    const counts = await inventoryCounts(db, { group: alex.id });
+    expect(counts.inStock).toBe((await groupUnits(db, alex.id)).filter((u) => u.status === "in_stock").length);
+  });
+
+  it("counts only a group's cards in a deal that mixes groups, splitting the card fee by its share", async () => {
+    const show = await groupNamed("Show Stock");
+    const alex = await groupNamed("Alex (consigned)");
+    const mine = (await groupUnits(db, show.id)).find((u) => u.status === "in_stock")!;
+    const theirs = (await groupUnits(db, alex.id)).find((u) => u.status === "in_stock")!;
+    const eventId = null;
+    await applyOps(db, [
+      {
+        type: "deal",
+        id: randomUUID(),
+        kind: "sale",
+        occurredAt: new Date().toISOString(),
+        eventId,
+        note: "",
+        device: "test",
+        out: [
+          { unitId: mine.id, amountCents: 3000, stickerCents: 3000 },
+          { unitId: theirs.id, amountCents: 1000, stickerCents: 1000 },
+        ],
+        misc: [],
+        in: [],
+        payments: [{ method: "card", direction: "in", amountCents: 4000 }],
+      },
+    ]);
+    const methods = [
+      { id: "cash", label: "Cash", feePercent: 0 },
+      { id: "card", label: "Card", feePercent: 3 },
+    ];
+    const all = await summarize(db, { eventId, tz: "UTC", methods, startingCashCents: 0 });
+    const g = await summarize(db, { eventId, tz: "UTC", methods, startingCashCents: 0, group: alex.id });
+    expect(g.groupView).toBe(true);
+    // the earlier consignment sales plus this deal's Alex card; my card is not in it
+    expect(g.deals.flatMap((d) => d.lines).every((l) => l.code !== mine.code)).toBe(true);
+    expect(g.deals.some((d) => d.lines.some((l) => l.code === theirs.code))).toBe(true);
+    expect(g.byMethod).toEqual([]);
+    expect(g.cashBoxCents).toBeNull();
+    expect(all.cashBoxCents).not.toBeNull();
+    // 3% of $40 = $1.20 for the deal; Alex's card was a quarter of it
+    expect(g.feesCents).toBe(30);
+    const mineView = await summarize(db, { eventId, tz: "UTC", methods, group: show.id });
+    expect(mineView.feesCents).toBe(90);
+    expect(mineView.revenueCents + g.revenueCents).toBe(all.revenueCents);
   });
 });

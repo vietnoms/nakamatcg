@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Badge, Button, Card, Select } from "@/components/ui";
 import { CANCEL_ALL_ZPL, PLAIN_TEST_ZPL, RESUME_ZPL, defaultPrinter, printerStatusText, sendZpl, type ZebraDevice } from "@/labels/browser-print";
@@ -57,7 +58,15 @@ export function LabelsClient({
 
   const [search, setSearch] = useState("");
   // "" = every group; "none" = cards in no group; else a group id
-  const [group, setGroup] = useState("");
+  // starts from ?group= so a group picked on another page carries over
+  const [group, setGroupState] = useState(useSearchParams().get("group") ?? "");
+  function setGroup(g: string) {
+    setGroupState(g);
+    const u = new URL(window.location.href);
+    if (g) u.searchParams.set("group", g);
+    else u.searchParams.delete("group");
+    window.history.replaceState(null, "", u);
+  }
   const [previewId, setPreviewId] = useState<string | null>(null);
   const groups = useMemo(() => {
     const by = new Map<string, { id: string; name: string; n: number }>();

@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Badge, Input, Select, Stat } from "@/components/ui";
 import { formatCents } from "@/lib/money";
@@ -102,7 +103,8 @@ export function GainsView({
     { cards: 0, sold: 0, cost: 0, gain: 0, unknown: 0 },
   );
 
-  const exportHref = tab === "stock" ? "/api/export/gains?view=unrealized" : "/api/export/gains?view=realized";
+  const group = useSearchParams().get("group");
+  const exportHref = `/api/export/gains?view=${tab === "stock" ? "unrealized" : "realized"}${group ? `&group=${encodeURIComponent(group)}` : ""}`;
 
   return (
     <div className="space-y-4">

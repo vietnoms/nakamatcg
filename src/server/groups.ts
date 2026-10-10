@@ -1,9 +1,25 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, notInArray, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { events, products, transactionLines, transactions, unitGroups, units } from "@/db/schema";
 import { badgeFor, type ProductKind } from "@/import/collectr";
 import { consignmentFee, consignmentTotals, type ConsignmentTotals } from "@/lib/consignment";
+
+/** A page's group filter: undefined = every group, null = cards in no group, else one group's id. */
+export type GroupFilter = string | null | undefined;
+
+/** Reads `?group=` ("none" for cards in no group); anything else unknown means every group. */
+export function parseGroupParam(v: string | null | undefined): GroupFilter {
+  if (!v) return undefined;
+  if (v === "none") return null;
+  return /^[0-9a-f-]{36}$/i.test(v) ? v : undefined;
+}
+
+/** The SQL condition for a group filter on units, or undefined for every group. */
+export function inGroup(f: GroupFilter): SQL | undefined {
+  if (f === undefined) return undefined;
+  return f === null ? isNull(units.groupId) : eq(units.groupId, f);
+}
 
 /** own: mine, for sale; consignment: someone else's, for sale; personal: my PC, not for sale */
 export type GroupKind = "own" | "consignment" | "personal";
@@ -34,7 +50,7 @@ export async function personalGroup(db: Db): Promise<string> {
  * Takes my in-stock copies of a product off sale: into the personal collection, with no price, so
  * they leave pricing, the sticker queue and the POS. Consigned copies are not mine and stay put.
  */
-export async function moveProductToPersonal(db: Db, productId: string): Promise<{ moved: number; groupId: string }> {
+export async function moveProductToPersonal(db: Db, productId: string, group?: GroupFilter): Promise<{ moved: number; groupId: string }> {
   return db.transaction(async (t) => {
     const tx = t as unknown as Db;
     const groupId = await personalGroup(tx);
@@ -46,6 +62,7 @@ export async function moveProductToPersonal(db: Db, productId: string): Promise<
           eq(units.productId, productId),
           eq(units.status, "in_stock"),
           sql`(${units.groupId} is null or ${units.groupId} in (select ${unitGroups.id} from ${unitGroups} where ${unitGroups.kind} = 'own'))`,
+          inGroup(group),
         ),
       )
       .returning({ id: units.id });
