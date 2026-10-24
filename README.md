@@ -34,6 +34,9 @@ a phone that keeps working with no signal.
   laptop's label queue for stickers.
 - **Customer's card unknown?** Under **+ Their cards**, tap **Take photo**: CardSight (Claude as backup) reads the
   card or slab, and the TCGplayer price fills in. Or type a few words in **search prices**. Needs signal.
+- **No time to look cards up?** **+ Pile, one price** or **+ Quick item** takes them in as placeholders (each gets
+  a code); identify them on the laptop's **Needs details** page after the show. **Photo of the deal** keeps a
+  picture with the deal. Every cart is kept under **Drafts**; **Save for later** parks one to serve the next customer.
 - No signal: keep selling. The header shows how many deals are waiting; they sync on their own.
 
 **After the show:** Sales shows revenue, profit, payment totals, and the cash box count. Export the

@@ -28,6 +28,39 @@ export type LocalDeal = {
   conflicts?: string[];
 };
 
+/**
+ * A photo of a deal. "cart": taken for the cart being built; "pending": its deal is recorded and the
+ * photo waits to upload (after the deal itself syncs); "done": on the server (the bytes are dropped here).
+ */
+export type LocalPhoto = {
+  id: string;
+  /** the draft (cart) it was taken for; stays with the draft if the cart is put aside */
+  draftId: string | null;
+  dealId: string | null;
+  blob: Blob | null;
+  takenAt: string;
+  state: "cart" | "pending" | "done";
+};
+
+/**
+ * Every cart is kept as a draft from its first item, finished or not, so it can be looked at or
+ * picked up again later. "open": the cart on screen; "parked": put aside for later; "abandoned":
+ * cleared without confirming. A confirmed cart's draft is dropped (the deal is in History).
+ */
+export type LocalDraft = {
+  id: string;
+  state: "open" | "parked" | "abandoned";
+  createdAt: string;
+  updatedAt: string;
+  outIds: string[];
+  misc: { key: string; description: string; amountCents: number }[];
+  items: unknown[];
+  agreed: number | null;
+  summary: string;
+  /** money as it stood: positive they pay, negative I pay */
+  settleCents: number;
+};
+
 type Meta = { key: string; value: unknown };
 
 class PosDb extends Dexie {
@@ -36,6 +69,8 @@ class PosDb extends Dexie {
   outbox!: Table<OutboxItem, string>;
   deals!: Table<LocalDeal, string>;
   meta!: Table<Meta, string>;
+  photos!: Table<LocalPhoto, string>;
+  drafts!: Table<LocalDraft, string>;
 
   constructor() {
     super("nakama-pos");
@@ -46,6 +81,8 @@ class PosDb extends Dexie {
       deals: "id, occurredAt",
       meta: "key",
     });
+    // v2: photos of deals (kept until uploaded) and drafts of every cart
+    this.version(2).stores({ photos: "id, draftId, dealId, state", drafts: "id, updatedAt, state" });
   }
 }
 

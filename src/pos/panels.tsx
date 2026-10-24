@@ -73,6 +73,9 @@ export function HistoryPanel({
         <ul>
           <li><b>One cart per deal</b>: scan your cards going out, tap <b>+ Their cards</b> for anything coming in (photo or search, check, Add). It is a sale, a buy or a trade depending on what is in the cart.</li>
           <li>The bottom says <b>who pays whom</b>. Type another amount if you agree on one (out goes down like a discount, split over the cards), round it down, pick how it was paid, and Confirm. Cards coming in become stock with their cost; their stickers print later on the laptop.</li>
+          <li><b>No time to look cards up?</b> Under + Their cards, <b>+ Pile, one price</b> takes a stack in for one amount (say 14 cards and a slab for $85) and <b>+ Quick item</b> one thing for its amount. Each copy gets a code and can be sold; say which card it is on the laptop&apos;s <b>Needs details</b> page after the show.</li>
+          <li><b>Photo of the deal</b>: snap the pile or the agreed numbers. It stays with the deal and uploads once there is signal; see it on Sales and Needs details.</li>
+          <li><b>Drafts</b>: every cart is kept from its first item. <b>Save for later</b> puts it aside to serve the next customer; <b>Clear cart</b> keeps it too. Pick either up again from Drafts on the Deal tab.</li>
           <li><b>No signal is fine.</b> Everything is saved on this phone first and sent when there is signal: the pill at the top shows how many deals are waiting. Keep the app open from the home-screen icon.</li>
           <li><b>Mistakes</b>: tap Undo on the message after a deal, or Void it below. Its cards go back into stock.</li>
           <li><b>Carts are saved</b>: closing the app, reloading, or scanning a sticker with the camera app keeps the same cart.</li>

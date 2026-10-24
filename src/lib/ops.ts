@@ -31,6 +31,10 @@ export const InLine = z.object({
   product: ProductInput,
   costCents: Cents,
   priceCents: Cents.nullable(),
+  /** a quick placeholder taken in at the table ("Unidentified card"): which card it is gets filled in after the show */
+  pending: z.boolean().optional(),
+  /** what was said about it ("binder of Eeveelutions"), kept on the card */
+  note: z.string().trim().max(200).optional(),
 });
 export const Payment = z.object({ method: z.string().min(1).max(40), direction: z.enum(["in", "out"]), amountCents: Cents });
 

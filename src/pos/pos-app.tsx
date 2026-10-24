@@ -7,10 +7,10 @@ import { HistoryPanel, type Ctx } from "./panels";
 import { DealPanel } from "./deal-panel";
 import { warmScanner } from "./scanner";
 import { ThemeToggle } from "@/components/theme";
-import { SignedOut, counts, deviceName, pull, push, recordVoid } from "./sync";
+import { SignedOut, counts, deviceName, pull, push, pushPhotos, recordVoid } from "./sync";
 
 type Tab = "deal" | "history";
-type Status = { online: boolean; signedOut: boolean; pending: number; errors: number; lastPull: string | null; offlineReady: boolean; busy: boolean };
+type Status = { online: boolean; signedOut: boolean; pending: number; errors: number; photos: number; lastPull: string | null; offlineReady: boolean; busy: boolean };
 
 /** Tells the service worker to keep this page and everything it loaded, for offline use. */
 async function cachePageAssets(): Promise<void> {
@@ -42,7 +42,7 @@ export function PosApp() {
   const [tab, setTab] = useState<Tab>("deal");
   const [scanning, setScanning] = useState(true);
   const [toast, setToast] = useState<{ text: string; dealId: string } | null>(null);
-  const [status, setStatus] = useState<Status>({ online: true, signedOut: false, pending: 0, errors: 0, lastPull: null, offlineReady: false, busy: false });
+  const [status, setStatus] = useState<Status>({ online: true, signedOut: false, pending: 0, errors: 0, photos: 0, lastPull: null, offlineReady: false, busy: false });
   const syncing = useRef(false);
   const [installHint, setInstallHint] = useState<"ios" | "android" | null>(null);
 
@@ -79,6 +79,7 @@ export function PosApp() {
         await push();
         await pull(full);
         await push();
+        await pushPhotos();
         await loadLocal();
         await refreshStatus({ signedOut: false, online: true, busy: false });
       } catch (e) {
@@ -163,7 +164,9 @@ export function PosApp() {
       ? { text: `Offline${status.pending ? ` · ${status.pending} to sync` : ""}`, cls: "bg-amber-500 text-white" }
       : status.pending
         ? { text: `${status.pending} to sync`, cls: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200" }
-        : { text: "Synced", cls: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200" };
+        : status.photos
+          ? { text: `${status.photos} photo${status.photos === 1 ? "" : "s"} to upload`, cls: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200" }
+          : { text: "Synced", cls: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200" };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">

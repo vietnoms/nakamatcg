@@ -9,6 +9,7 @@ import { sql } from "drizzle-orm";
 import {
   bigserial,
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -21,6 +22,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
+/** raw bytes (deal photos); postgres-js and PGlite both hand back a Uint8Array (a Buffer is one) */
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({ dataType: () => "bytea" });
 
 export const products = pgTable(
   "products",
@@ -106,6 +109,10 @@ export const units = pgTable(
     stickeredMarketCents: integer("stickered_market_cents"),
     /** a damaged or lost sticker: print again even though the price is unchanged */
     reprint: boolean("reprint").notNull().default(false),
+    /** taken in at a show as a quick placeholder ("Unidentified card"): which card it is gets filled in later */
+    detailsPending: boolean("details_pending").notNull().default(false),
+    /** when a placeholder was identified (it stays on the Needs details page a while, to re-split its pile's cost) */
+    identifiedAt: ts("identified_at"),
     note: text("note").notNull().default(""),
     createdAt: ts("created_at").notNull().defaultNow(),
     /** bumped on every change; the phone pulls units changed since its last snapshot */
@@ -225,6 +232,23 @@ export const syncConflicts = pgTable("sync_conflicts", {
   createdAt: ts("created_at").notNull().defaultNow(),
   resolvedAt: ts("resolved_at"),
 });
+
+/** A photo of a deal taken on the phone (the pile across the table). Append-only; id is phone-made. */
+export const dealPhotos = pgTable(
+  "deal_photos",
+  {
+    id: uuid("id").primaryKey(),
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => transactions.id),
+    takenAt: ts("taken_at").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    bytes: bytea("bytes").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("deal_photos_transaction_idx").on(t.transactionId)],
+);
 
 export const settings = pgTable("settings", {
   key: text("key").primaryKey(),

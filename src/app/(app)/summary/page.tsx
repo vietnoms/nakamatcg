@@ -5,6 +5,7 @@ import { GroupPicker } from "@/components/group-picker";
 import { getDb } from "@/db/client";
 import { formatCents } from "@/lib/money";
 import { listGroups, parseGroupParam } from "@/server/groups";
+import { photoIds } from "@/server/photos";
 import { getSettings } from "@/server/settings";
 import { eventDays, listEvents, summarize } from "@/server/summary";
 import { EventControls } from "./event-controls";
@@ -32,6 +33,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
     group,
   });
   const groupParam = group === undefined ? "" : (group ?? "none");
+  const photos = await photoIds(db, s.deals.map((d) => d.id));
   const time = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit" });
   const q = (o: { event?: string | null; day?: string }) => {
     const p = new URLSearchParams();
@@ -150,6 +152,16 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
                   </span>
                   <span className={`w-24 text-right font-medium tabular-nums ${net >= 0 ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>{formatCents(net)}</span>
                 </div>
+                {(photos.get(d.id)?.length ?? 0) > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1.5 pl-2">
+                    {photos.get(d.id)!.map((id) => (
+                      <a key={id} href={`/api/deal-photos/${id}`} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`/api/deal-photos/${id}`} alt="Deal photo" loading="lazy" className="h-16 w-16 rounded object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 <ul className="mt-1 pl-2 text-xs text-zinc-500 dark:text-zinc-400">
                   {d.lines.map((l, i) => (
                     <li key={i}>

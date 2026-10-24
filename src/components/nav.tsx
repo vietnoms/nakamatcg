@@ -16,12 +16,14 @@ const NAV = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function Nav() {
+/** `needsDetails`: cards taken in as placeholders still to identify; the link shows while there are any. */
+export function Nav({ needsDetails = 0 }: { needsDetails?: number }) {
   const path = usePathname();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const items = needsDetails > 0 || path.startsWith("/intake") ? [...NAV.slice(0, 5), { href: "/intake", label: `Needs details${needsDetails ? ` (${needsDetails})` : ""}` }, ...NAV.slice(5)] : NAV;
   return (
     <>
-      {NAV.map((n) => (
+      {items.map((n) => (
         <Link
           key={n.href}
           href={n.href}

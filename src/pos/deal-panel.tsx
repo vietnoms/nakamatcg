@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { buildDeal, outSticker, settle, type MiscItem, type OutItem } from "@/lib/deal";
 import { clampOfferPercent } from "@/lib/pricing";
 import { CartEntry, CartList, useCart } from "./cart";
-import { IncomingForm, IncomingList, MoneyInput, PaymentBox, PercentPicker, expandIncoming, money, repriceIncoming, type IncomingItem } from "./parts";
+import { IncomingForm, IncomingList, MoneyInput, PaymentBox, PercentPicker, expandIncoming, itemTotal, money, repriceIncoming, type IncomingItem } from "./parts";
+import { QuickIntake } from "./quick-intake";
+import { DealPhotos, useCartPhotos } from "./deal-photos";
 import { Hint, useOfferPercent, type Ctx } from "./panels";
 import { usePersistentState } from "./persist";
 import { recordDeal } from "./sync";
+import { deleteDraft, listDrafts, saveDraft, setDraftState } from "./drafts";
+import { posDb, type LocalDraft } from "./db";
 
 type Misc = MiscItem & { key: string };
 
@@ -18,6 +22,23 @@ type Misc = MiscItem & { key: string };
  */
 export function DealPanel({ ctx }: { ctx: Ctx }) {
   const cart = useCart("nk:cart:deal");
+  // every cart is a draft from its first item (see LocalDraft): this is the one on screen
+  const [draftId, setDraftId] = usePersistentState<string>("nk:cart:deal-draft", "");
+  useEffect(() => {
+    if (!draftId) setDraftId(crypto.randomUUID());
+  }, [draftId, setDraftId]);
+  const photos = useCartPhotos(draftId || "none");
+  const [drafts, setDrafts] = useState<(LocalDraft & { photos: number })[]>([]);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [draftTick, setDraftTick] = useState(0);
+  // draft writes run one after another, so a late autosave can't bring back a draft just put aside
+  const draftQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const retired = useRef(new Set<string>());
+  const queued = <T,>(job: () => Promise<T>): Promise<T> => {
+    const next = draftQueue.current.then(job, job);
+    draftQueue.current = next.catch(() => {});
+    return next;
+  };
   const [misc, setMisc] = usePersistentState<Misc[]>("nk:cart:deal-misc", []);
   const [items, setItems] = usePersistentState<IncomingItem[]>("nk:cart:deal-in", []);
   // the agreed money, signed: positive they pay me, negative I pay them; null = as priced
@@ -42,7 +63,7 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
   }, []);
 
   const out: OutItem[] = cart.lines.map((l) => ({ unitId: l.id, stickerCents: l.priceCents, marketCents: l.marketCents }));
-  const inCents = items.reduce((n, i) => n + i.eachCents * i.qty, 0);
+  const inCents = items.reduce((n, i) => n + itemTotal(i), 0);
   const sticker = outSticker(out, misc);
   const asPriced = sticker - inCents;
   const money$ = settle({ out, misc, inCents, agreedCents: agreed });
@@ -74,13 +95,67 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
     setAgreed(Math.sign(s) * Math.floor(abs / step) * step);
   }
 
-  function clear() {
+  const hasContent = !empty || photos.photos.length > 0;
+  function describe(): string {
+    const parts: string[] = [];
+    if (outCount) parts.push(outCount === 1 ? (cart.lines[0]?.name ?? misc[0]?.description ?? "1 out") : `${outCount} out`);
+    if (inCount) parts.push(inCount === 1 ? `in: ${items[0]!.product.name}` : `${inCount} in`);
+    if (!parts.length) parts.push("photos only");
+    return parts.join(" · ");
+  }
+
+  // keep the draft up to date as the cart changes (nothing is saved for an empty cart)
+  useEffect(() => {
+    if (!draftId || !hasContent) return;
+    const d = { id: draftId, state: "open" as const, outIds: cart.lines.map((l) => l.id), misc, items, agreed, summary: describe(), settleCents: s };
+    void queued(async () => {
+      if (!retired.current.has(d.id)) await saveDraft(d);
+    }).then(() => setDraftTick((t) => t + 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftId, cart.lines, misc, items, agreed, photos.photos.length]);
+
+  useEffect(() => {
+    void listDrafts(draftId).then(setDrafts);
+  }, [draftId, draftTick]);
+
+  /** Empties the screen for the next deal; the current draft is kept as `keepAs` (or dropped when there was nothing in it). */
+  async function fresh(keepAs: LocalDraft["state"] | "done") {
+    const id = draftId;
+    retired.current.add(id);
+    const keep = hasContent;
+    await queued(async () => {
+      if (keepAs === "done") await posDb().drafts.delete(id);
+      else if (keep) await setDraftState(id, keepAs);
+      else await deleteDraft(id);
+    });
+    setDraftId(crypto.randomUUID());
     cart.clear();
     setMisc([]);
     setItems([]);
     setAgreed(null);
     setDirPick(null);
     setInOpen(false);
+    setDraftTick((t) => t + 1);
+  }
+
+  async function resume(d: LocalDraft) {
+    // the cart on screen is kept too, put aside
+    const id = draftId;
+    const keep = hasContent;
+    retired.current.add(id);
+    retired.current.delete(d.id);
+    await queued(async () => {
+      if (keep) await setDraftState(id, "parked");
+      else await deleteDraft(id);
+      await setDraftState(d.id, "open");
+    });
+    await cart.replace(d.outIds);
+    setMisc(d.misc);
+    setItems(d.items as IncomingItem[]);
+    setAgreed(d.agreed);
+    setDirPick(null);
+    setDraftId(d.id);
+    setDraftsOpen(false);
   }
 
   function summary(kind: string): string {
@@ -111,7 +186,8 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
       const text = summary(op.kind);
       const how = op.payments.map((p) => ctx.settings.paymentMethods.find((m) => m.id === p.method)?.label ?? p.method).join(" + ");
       await recordDeal(op, text);
-      clear();
+      await photos.attach(op.id);
+      await fresh("done");
       const cash = money$.settleCents === 0 ? "even" : `${money$.settleCents > 0 ? "they paid" : "you paid"} ${money(Math.abs(money$.settleCents))}${how ? ` (${how})` : ""}`;
       ctx.onRecorded(`${text}: ${cash}${op.in.length ? ". Stickers for cards in queue on the laptop." : ""}`, op.id);
     } catch (e) {
@@ -126,6 +202,46 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="space-y-4">
+      {drafts.length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+          <button type="button" onClick={() => setDraftsOpen(!draftsOpen)} className="flex w-full items-center justify-between px-3 py-2 text-sm">
+            <span className="font-medium">Drafts ({drafts.length})</span>
+            <span className="text-zinc-500 dark:text-zinc-400">{draftsOpen ? "Hide" : "Show"}</span>
+          </button>
+          {draftsOpen && (
+            <ul className="border-t border-zinc-200 px-3 dark:border-zinc-800">
+              {drafts.map((d) => (
+                <li key={d.id} className="flex items-center gap-2 border-b border-zinc-200 py-2 text-sm last:border-0 dark:border-zinc-800">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate">
+                      <span className="mr-1 rounded bg-zinc-100 px-1 text-xs dark:bg-zinc-800">{d.state === "parked" ? "saved" : d.state === "abandoned" ? "cleared" : "open"}</span>
+                      {d.summary}
+                    </div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {new Date(d.updatedAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}
+                      {d.settleCents !== 0 && ` · ${d.settleCents > 0 ? "they pay" : "I pay"} ${money(Math.abs(d.settleCents))}`}
+                      {d.photos > 0 && ` · ${d.photos} photo${d.photos === 1 ? "" : "s"}`}
+                    </div>
+                  </div>
+                  <button type="button" className="rounded border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700" onClick={() => void resume(d)}>
+                    Resume
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Delete draft"
+                    className="px-1 text-xl leading-none text-zinc-400 dark:text-zinc-500"
+                    onClick={() => {
+                      if (window.confirm("Delete this draft and its photos?")) void deleteDraft(d.id).then(() => setDraftTick((t) => t + 1));
+                    }}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Going out</h3>
         <CartEntry cart={cart} scanning={ctx.scanning} setScanning={ctx.setScanning} />
@@ -178,8 +294,10 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
             </button>
           )}
         </div>
+        <DealPhotos cart={photos} />
         {showIn && (
           <>
+            <QuickIntake onAdd={(xs) => setItems((cur) => [...cur, ...xs])} />
             <PercentPicker label="Offer" value={offer} onChange={setOffer} />
             <IncomingForm offerPercent={offer} rule={ctx.settings.pricing} onAdd={(it) => setItems((xs) => [...xs, it])} verb="Offer" />
             <IncomingList items={items} onRemove={(k) => setItems((xs) => xs.filter((i) => i.key !== k))} verb="offer" />
@@ -205,7 +323,7 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
               <div className="tabular-nums">{money(sticker)}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">In · {inCount} at {offer}%</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">In · {inCount}</div>
               <div className="tabular-nums">{money(inCents)}</div>
             </div>
           </div>
@@ -260,15 +378,20 @@ export function DealPanel({ ctx }: { ctx: Ctx }) {
             />
           )}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <button
-            type="button"
-            className="w-full py-1 text-sm text-zinc-500 dark:text-zinc-400"
-            onClick={() => {
-              if (window.confirm("Empty the cart?")) clear();
-            }}
-          >
-            Clear cart
-          </button>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <button type="button" className="rounded-md border border-zinc-300 py-2 dark:border-zinc-700" onClick={() => void fresh("parked")}>
+              Save for later
+            </button>
+            <button
+              type="button"
+              className="py-2 text-zinc-500 dark:text-zinc-400"
+              onClick={() => {
+                if (window.confirm("Empty the cart? It stays under Drafts in case you need it.")) void fresh("abandoned");
+              }}
+            >
+              Clear cart
+            </button>
+          </div>
         </div>
       )}
 

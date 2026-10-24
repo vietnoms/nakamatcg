@@ -175,7 +175,15 @@ export type IncomingItem = {
   priceCents: number | null;
   /** eachCents follows the offer percent: moving the slider re-prices it (false once typed by hand) */
   offerAuto?: boolean;
+  /** each copy's own amount when a pile's total does not split evenly (overrides eachCents) */
+  costs?: number[];
+  /** a quick placeholder: which card it is gets filled in after the show */
+  pending?: boolean;
+  note?: string;
 };
+
+/** What all copies of an incoming item come to. */
+export const itemTotal = (it: IncomingItem) => (it.costs ? it.costs.reduce((n, c) => n + c, 0) : it.eachCents * it.qty);
 
 /** Re-prices the cards that follow the offer percent; amounts typed by hand stay. */
 export function repriceIncoming(items: IncomingItem[], percent: number, rule: PricingRule): IncomingItem[] {
@@ -641,7 +649,7 @@ export function IncomingForm({
 export function IncomingList({ items, onRemove, verb }: { items: IncomingItem[]; onRemove: (key: string) => void; verb: string }) {
   if (items.length === 0) return null;
   const cards = items.reduce((n, i) => n + i.qty, 0);
-  const total = items.reduce((n, i) => n + i.eachCents * i.qty, 0);
+  const total = items.reduce((n, i) => n + itemTotal(i), 0);
   return (
     <ul className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3">
       <li className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 py-2 text-xs font-semibold tracking-wide text-zinc-500 dark:text-zinc-400 uppercase">
@@ -658,7 +666,10 @@ export function IncomingList({ items, onRemove, verb }: { items: IncomingItem[];
               {it.product.name}
             </div>
             <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-              {[it.product.setName, it.product.cardNumber && `#${it.product.cardNumber}`, it.product.kind === "slab" ? `${it.product.grader} ${it.product.grade}` : it.product.kind === "raw" ? it.product.condition : "Sealed"]
+              {(it.pending
+                ? [it.product.kind === "slab" ? "Slab" : it.product.kind === "sealed" ? "Sealed" : "Card", "details after the show", it.note]
+                : [it.product.setName, it.product.cardNumber && `#${it.product.cardNumber}`, it.product.kind === "slab" ? `${it.product.grader} ${it.product.grade}` : it.product.kind === "raw" ? it.product.condition : "Sealed"]
+              )
                 .filter(Boolean)
                 .join(" · ")}
               {it.product.marketCents !== null && ` · market ${money(it.product.marketCents)}`}
@@ -666,7 +677,7 @@ export function IncomingList({ items, onRemove, verb }: { items: IncomingItem[];
             </div>
           </div>
           <div className="text-right text-sm tabular-nums">
-            <div>{money(it.eachCents * it.qty)}</div>
+            <div>{money(itemTotal(it))}</div>
             <div className="text-xs text-zinc-500 dark:text-zinc-400">{verb}</div>
           </div>
           <button type="button" onClick={() => onRemove(it.key)} className="px-2 text-xl leading-none text-zinc-400 dark:text-zinc-500" aria-label="Remove">
@@ -680,14 +691,21 @@ export function IncomingList({ items, onRemove, verb }: { items: IncomingItem[];
 
 /** Turns incoming items into one unit each, with fresh codes that are not on this phone already. */
 export async function expandIncoming(items: IncomingItem[]) {
-  const out: { unitId: string; code: string; product: ProductInput; costCents: number; priceCents: number | null }[] = [];
+  const out: { unitId: string; code: string; product: ProductInput; costCents: number; priceCents: number | null; pending?: boolean; note?: string }[] = [];
   const used = new Set<string>();
   for (const it of items) {
     for (let i = 0; i < it.qty; i++) {
       let code = newUnitCode();
       while (used.has(code) || (await posDb().units.where("code").equals(code).count()) > 0) code = newUnitCode();
       used.add(code);
-      out.push({ unitId: crypto.randomUUID(), code, product: it.product, costCents: it.eachCents, priceCents: it.priceCents });
+      out.push({
+        unitId: crypto.randomUUID(),
+        code,
+        product: it.product,
+        costCents: it.costs?.[i] ?? it.eachCents,
+        priceCents: it.priceCents,
+        ...(it.pending ? { pending: true, note: it.note ?? "" } : {}),
+      });
     }
   }
   return out;
