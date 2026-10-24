@@ -165,3 +165,11 @@ condition first and then any condition (a scan is often NM where the original sa
 copy keeps its cost and sticker code. Only what is still short becomes new copies, never more than
 the usual count allows. It is opt-in because a re-import with it on would pull cards back out of
 groups made by hand in the app.
+
+**One deal screen.** The POS had Sell, Buy and Trade tabs, each with its own cart, offer and payment
+box; at a busy table that was too slow. Now the Deal tab holds one cart: cards going out (scanner,
+search, Sealed, items without a sticker) and cards coming in (lookup at one remembered offer %). The
+kind is derived from the cart (out only: sale; in only: buy; both: trade), so the server, Sales,
+Gains, consignment report and exports read deals as before. The settle bar shows who pays whom; an
+agreed amount moves the out side (split over the cards like a bundle discount), or the in side when
+nothing goes out (split over the cards by their offers). The logic is `src/lib/deal.ts`, tested.

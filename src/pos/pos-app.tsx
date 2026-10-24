@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { getMeta, setMeta, type LocalSettings } from "./db";
-import { BuyPanel, HistoryPanel, SellPanel, TradePanel, type Ctx } from "./panels";
+import { HistoryPanel, type Ctx } from "./panels";
+import { DealPanel } from "./deal-panel";
 import { warmScanner } from "./scanner";
 import { ThemeToggle } from "@/components/theme";
 import { SignedOut, counts, deviceName, pull, push, recordVoid } from "./sync";
 
-type Tab = "sell" | "buy" | "trade" | "history";
+type Tab = "deal" | "history";
 type Status = { online: boolean; signedOut: boolean; pending: number; errors: number; lastPull: string | null; offlineReady: boolean; busy: boolean };
 
 /** Tells the service worker to keep this page and everything it loaded, for offline use. */
@@ -38,7 +39,7 @@ export function PosApp() {
   const [settings, setSettings] = useState<LocalSettings | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [device, setDevice] = useState("");
-  const [tab, setTab] = useState<Tab>("sell");
+  const [tab, setTab] = useState<Tab>("deal");
   const [scanning, setScanning] = useState(true);
   const [toast, setToast] = useState<{ text: string; dealId: string } | null>(null);
   const [status, setStatus] = useState<Status>({ online: true, signedOut: false, pending: 0, errors: 0, lastPull: null, offlineReady: false, busy: false });
@@ -190,8 +191,8 @@ export function PosApp() {
             </button>
           )}
         </div>
-        <nav className="grid grid-cols-4 text-sm">
-          {(["sell", "buy", "trade", "history"] as Tab[]).map((t) => (
+        <nav className="grid grid-cols-2 text-sm">
+          {(["deal", "history"] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -229,14 +230,8 @@ export function PosApp() {
 
       <main className="flex-1 p-3 pb-28">
         {/* panels stay mounted so a half-built cart survives a tab switch */}
-        <div hidden={tab !== "sell"}>
-          <SellPanel ctx={{ ...ctx, scanning: scanning && tab === "sell" }} />
-        </div>
-        <div hidden={tab !== "buy"}>
-          <BuyPanel ctx={ctx} />
-        </div>
-        <div hidden={tab !== "trade"}>
-          <TradePanel ctx={{ ...ctx, scanning: scanning && tab === "trade" }} />
+        <div hidden={tab !== "deal"}>
+          <DealPanel ctx={{ ...ctx, scanning: scanning && tab === "deal" }} />
         </div>
         <div hidden={tab !== "history"}>
           {tab === "history" && (

@@ -266,7 +266,7 @@ export function SettingsForms({ settings }: { settings: AppSettings }) {
 
       <Card title="Trades and re-stickering">
         <div className="space-y-3 text-sm">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Trade-in value is the starting credit for a customer's card on the POS Trade tab (you can change it per card). It also becomes that card's cost for gain and loss.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Trade-in value is the starting offer for a customer's cards on the POS (move the slider there or change it per card). It also becomes that card's cost for gain and loss.</p>
           <label className="flex items-center gap-2">
             Trade-in value
             <Input type="number" value={tradeIn} onChange={(e) => setTradeIn(Number(e.target.value))} className="w-20 text-right" />% of market
