@@ -158,6 +158,31 @@ export async function push(): Promise<{ sent: number; errors: number }> {
   return { sent, errors };
 }
 
+/**
+ * Uploads deal photos whose deal is already on the server, one at a time (they are a few hundred KB
+ * each on show-floor signal). A photo whose deal the server has not got yet waits for the next sync.
+ */
+export async function pushPhotos(): Promise<number> {
+  const db = posDb();
+  let sent = 0;
+  for (const p of await db.photos.where("state").equals("pending").toArray()) {
+    if (!p.dealId || !p.blob) continue;
+    if (!(await db.deals.get(p.dealId))?.synced) continue;
+    const form = new FormData();
+    form.set("id", p.id);
+    form.set("dealId", p.dealId);
+    form.set("takenAt", p.takenAt);
+    form.set("image", p.blob, `${p.id}.jpg`);
+    const res = await fetch("/api/pos/photo", { method: "POST", body: form });
+    if (res.status === 401) throw new SignedOut();
+    if (res.status === 404) continue;
+    if (!res.ok) throw new Error(`photo upload failed (${res.status})`);
+    await db.photos.update(p.id, { state: "done", blob: null });
+    sent++;
+  }
+  return sent;
+}
+
 /** Finds a deal's op whether it is still in the outbox or already synced. */
 export async function findOp(id: string): Promise<Op | undefined> {
   const db = posDb();
@@ -169,10 +194,14 @@ export async function retryErrors(): Promise<void> {
   await db.outbox.where("state").equals("error").modify({ state: "pending", error: undefined });
 }
 
-export async function counts(): Promise<{ pending: number; errors: number }> {
+export async function counts(): Promise<{ pending: number; errors: number; photos: number }> {
   const db = posDb();
-  const [pending, errors] = await Promise.all([db.outbox.where("state").equals("pending").count(), db.outbox.where("state").equals("error").count()]);
-  return { pending, errors };
+  const [pending, errors, photos] = await Promise.all([
+    db.outbox.where("state").equals("pending").count(),
+    db.outbox.where("state").equals("error").count(),
+    db.photos.where("state").equals("pending").count(),
+  ]);
+  return { pending, errors, photos };
 }
 
 export async function lastDeals(limit = 50): Promise<LocalDeal[]> {

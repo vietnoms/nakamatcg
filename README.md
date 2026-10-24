@@ -27,13 +27,16 @@ a phone that keeps working with no signal.
 
 **At the show**
 
-- **Sell:** scan stickers into the cart, adjust the total for a deal, pick how they paid, Confirm.
-  Undo is on the toast for 8 seconds; any deal can be voided from History.
-- **Buy:** search or type the card, the price fills from market and your cash-offer %, Confirm.
-  Bought cards wait in the laptop's label queue for stickers.
-- **Trade:** scan your cards out, add theirs in at trade-in %, the difference is paid either way.
-- **Customer's card unknown?** On Buy or Trade, tap **Take photo**: CardSight (Claude as backup) reads the
+- **One cart per deal (Deal tab):** scan your cards going out; tap **+ Their cards** for anything coming in
+  (photo or search, check, Add) at your offer %. The bottom shows who pays whom: type another amount if you
+  agree on one, pick how it was paid, Confirm. A sale, buy or trade follows from what is in the cart.
+  Undo is on the toast for 8 seconds; any deal can be voided from History. Cards coming in wait in the
+  laptop's label queue for stickers.
+- **Customer's card unknown?** Under **+ Their cards**, tap **Take photo**: CardSight (Claude as backup) reads the
   card or slab, and the TCGplayer price fills in. Or type a few words in **search prices**. Needs signal.
+- **No time to look cards up?** **+ Pile, one price** or **+ Quick item** takes them in as placeholders (each gets
+  a code); identify them on the laptop's **Needs details** page after the show. **Photo of the deal** keeps a
+  picture with the deal. Every cart is kept under **Drafts**; **Save for later** parks one to serve the next customer.
 - No signal: keep selling. The header shows how many deals are waiting; they sync on their own.
 
 **After the show:** Sales shows revenue, profit, payment totals, and the cash box count. Export the
@@ -66,7 +69,7 @@ runs the offline rehearsal in the installed Edge against a running server; see t
      stickers**; changing it later breaks camera-app links on old stickers (in-app scanning still works).
    - `APP_TZ`: e.g. `America/Los_Angeles`.
    - `CARDSIGHT_API_KEY` (free key at cardsight.ai) and `ANTHROPIC_API_KEY` (console.anthropic.com):
-     photo lookup on Buy and Trade. Either one alone works; CardSight is tried first.
+     photo lookup for cards coming in. Either one alone works; CardSight is tried first.
    - `CRON_SECRET`: any long random string; lets Vercel's nightly price-catalog refresh in.
 3. Run the migrations against the production database: `DATABASE_URL=... pnpm db:migrate`.
 4. Deploy, then sign in at `/login`.

@@ -127,6 +127,17 @@ export function useCart(storageKey?: string) {
     [setLines],
   );
 
+  /** Puts a saved cart back (a draft picked up again); cards no longer in stock are left out. */
+  const replace = useCallback(
+    async (ids: string[]) => {
+      const found = await posDb().units.bulkGet(ids);
+      const keep = found.filter((u): u is PosUnit => Boolean(u) && u!.status === "in_stock");
+      setLines(() => keep);
+      setFlash(keep.length < ids.length ? { tone: "warn", text: `${ids.length - keep.length} card(s) are no longer in stock and were left out` } : null);
+    },
+    [setLines],
+  );
+
   const remove = (id: string) => setLines((ls) => ls.filter((l) => l.id !== id));
   const clear = () => {
     setLines(() => []);
@@ -134,7 +145,7 @@ export function useCart(storageKey?: string) {
   };
   /** what the cards are worth at their sticker (or market if unpriced) */
   const stickerTotal = lines.reduce((n, l) => n + (l.priceCents ?? l.marketCents ?? 0), 0);
-  return { lines, add, addUnit, addMany, remove, clear, flash, setFlash, stickerTotal };
+  return { lines, add, addUnit, addMany, replace, remove, clear, flash, setFlash, stickerTotal };
 }
 
 export type Cart = ReturnType<typeof useCart>;

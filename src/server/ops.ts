@@ -109,6 +109,8 @@ async function applyDeal(tx: Db, d: DealOp): Promise<string[]> {
         acquiredAt: new Date(d.occurredAt),
         source: d.kind === "trade" ? "trade_in" : "buy",
         priceCents: l.priceCents,
+        detailsPending: l.pending ?? false,
+        note: l.note ?? "",
       });
       await tx.insert(transactionLines).values({
         transactionId: d.id,

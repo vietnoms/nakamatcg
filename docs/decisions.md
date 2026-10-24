@@ -165,3 +165,27 @@ condition first and then any condition (a scan is often NM where the original sa
 copy keeps its cost and sticker code. Only what is still short becomes new copies, never more than
 the usual count allows. It is opt-in because a re-import with it on would pull cards back out of
 groups made by hand in the app.
+
+**One deal screen.** The POS had Sell, Buy and Trade tabs, each with its own cart, offer and payment
+box; at a busy table that was too slow. Now the Deal tab holds one cart: cards going out (scanner,
+search, Sealed, items without a sticker) and cards coming in (lookup at one remembered offer %). The
+kind is derived from the cart (out only: sale; in only: buy; both: trade), so the server, Sales,
+Gains, consignment report and exports read deals as before. The settle bar shows who pays whom; an
+agreed amount moves the out side (split over the cards like a bundle discount), or the in side when
+nothing goes out (split over the cards by their offers). The logic is `src/lib/deal.ts`, tested.
+
+**Quick intake, deal photos, drafts.** At a busy table there is no time to look up every card coming
+in. **+ Pile, one price** takes a stack in for one amount and **+ Quick item** one thing; each copy
+still becomes a unit with a code (sellable at once, as Viet chose) but its product is a placeholder
+("Unidentified card/slab/sealed") and `units.details_pending` is set. The laptop's **Needs details**
+page lists them by deal with the deal's photos; identifying one points the unit at the real product
+(`productFor`, as at the POS), sets market and a suggested price, and stamps `identified_at`. Past
+deals follow the unit, so no append-only row changes. A pile's cost is split evenly at intake;
+**Re-split cost by market** spreads the identified cards' total by market price (in-stock cards only,
+since a sold card's cost is on its sale). Identified cards stay listed for 14 days for that.
+Deal photos are shrunk on the phone (1600 px JPEG), kept in IndexedDB with no signal, and uploaded
+after their deal syncs to `deal_photos` (bytea in Postgres, Viet's choice over a blob store; about
+200-300 KB each), idempotent on the phone's id. Every cart is also a **draft** on the phone from its
+first item: put aside (Save for later) or cleared, it stays under Drafts on the Deal tab to look at
+or resume; a confirmed cart's draft is dropped because the deal is in History. Draft writes are
+queued so a late autosave cannot bring a finished draft back.

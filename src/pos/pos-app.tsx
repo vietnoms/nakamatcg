@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { getMeta, setMeta, type LocalSettings } from "./db";
-import { BuyPanel, HistoryPanel, SellPanel, TradePanel, type Ctx } from "./panels";
+import { HistoryPanel, type Ctx } from "./panels";
+import { DealPanel } from "./deal-panel";
 import { warmScanner } from "./scanner";
 import { ThemeToggle } from "@/components/theme";
-import { SignedOut, counts, deviceName, pull, push, recordVoid } from "./sync";
+import { SignedOut, counts, deviceName, pull, push, pushPhotos, recordVoid } from "./sync";
 
-type Tab = "sell" | "buy" | "trade" | "history";
-type Status = { online: boolean; signedOut: boolean; pending: number; errors: number; lastPull: string | null; offlineReady: boolean; busy: boolean };
+type Tab = "deal" | "history";
+type Status = { online: boolean; signedOut: boolean; pending: number; errors: number; photos: number; lastPull: string | null; offlineReady: boolean; busy: boolean };
 
 /** Tells the service worker to keep this page and everything it loaded, for offline use. */
 async function cachePageAssets(): Promise<void> {
@@ -38,10 +39,10 @@ export function PosApp() {
   const [settings, setSettings] = useState<LocalSettings | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [device, setDevice] = useState("");
-  const [tab, setTab] = useState<Tab>("sell");
+  const [tab, setTab] = useState<Tab>("deal");
   const [scanning, setScanning] = useState(true);
   const [toast, setToast] = useState<{ text: string; dealId: string } | null>(null);
-  const [status, setStatus] = useState<Status>({ online: true, signedOut: false, pending: 0, errors: 0, lastPull: null, offlineReady: false, busy: false });
+  const [status, setStatus] = useState<Status>({ online: true, signedOut: false, pending: 0, errors: 0, photos: 0, lastPull: null, offlineReady: false, busy: false });
   const syncing = useRef(false);
   const [installHint, setInstallHint] = useState<"ios" | "android" | null>(null);
 
@@ -78,6 +79,7 @@ export function PosApp() {
         await push();
         await pull(full);
         await push();
+        await pushPhotos();
         await loadLocal();
         await refreshStatus({ signedOut: false, online: true, busy: false });
       } catch (e) {
@@ -162,7 +164,9 @@ export function PosApp() {
       ? { text: `Offline${status.pending ? ` · ${status.pending} to sync` : ""}`, cls: "bg-amber-500 text-white" }
       : status.pending
         ? { text: `${status.pending} to sync`, cls: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200" }
-        : { text: "Synced", cls: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200" };
+        : status.photos
+          ? { text: `${status.photos} photo${status.photos === 1 ? "" : "s"} to upload`, cls: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200" }
+          : { text: "Synced", cls: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200" };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -190,8 +194,8 @@ export function PosApp() {
             </button>
           )}
         </div>
-        <nav className="grid grid-cols-4 text-sm">
-          {(["sell", "buy", "trade", "history"] as Tab[]).map((t) => (
+        <nav className="grid grid-cols-2 text-sm">
+          {(["deal", "history"] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -229,14 +233,8 @@ export function PosApp() {
 
       <main className="flex-1 p-3 pb-28">
         {/* panels stay mounted so a half-built cart survives a tab switch */}
-        <div hidden={tab !== "sell"}>
-          <SellPanel ctx={{ ...ctx, scanning: scanning && tab === "sell" }} />
-        </div>
-        <div hidden={tab !== "buy"}>
-          <BuyPanel ctx={ctx} />
-        </div>
-        <div hidden={tab !== "trade"}>
-          <TradePanel ctx={{ ...ctx, scanning: scanning && tab === "trade" }} />
+        <div hidden={tab !== "deal"}>
+          <DealPanel ctx={{ ...ctx, scanning: scanning && tab === "deal" }} />
         </div>
         <div hidden={tab !== "history"}>
           {tab === "history" && (

@@ -26,7 +26,7 @@ export type LookupFill = {
 };
 
 /** Phone photos are 3-12 MB; 1600 px JPEG is plenty to read a card and uploads fast on show-floor signal. */
-async function shrink(file: File): Promise<Blob> {
+export async function shrink(file: File): Promise<Blob> {
   try {
     const bmp = await createImageBitmap(file);
     const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));

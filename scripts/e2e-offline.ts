@@ -47,8 +47,8 @@ async function main() {
   await page.getByRole("button", { name: "Hide cam" }).click();
   await page.fill('input[placeholder="Sticker code or card name"]', code);
   await page.getByRole("button", { name: "Find" }).click();
-  await page.getByText(/Confirm sale/).waitFor();
-  await page.getByRole("button", { name: /Confirm sale/ }).click();
+  await page.getByRole("button", { name: "Confirm", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await page.getByText(/1 to sync/).waitFor({ timeout: 10_000 });
   step(`sold ${code} offline: 1 deal waiting to sync`);
 
